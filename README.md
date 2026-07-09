@@ -217,34 +217,21 @@ C:\nginx\html\pms\
 
 ### 步骤 5：NSSM 托管后端
 
-[NSSM](https://nssm.cc/download) 将 jar 注册为 Windows 服务，实现开机自启、崩溃自动重启。
-
-**5.1 安装 NSSM**
-
-下载 NSSM，将 `nssm.exe`（64位系统用 win64 目录下的）放到 `C:\nssm\`，并加入系统 PATH。
-
-**5.2 修改安装脚本**
-
-编辑 `deploy/nssm-install.bat` 中的路径：
-
 ```bat
-set JAVA_HOME=C:\Program Files\Java\jdk-17
-set APP_DIR=C:\pms
+nssm install PMS_BACKEND C:\Java\jdk-17.0.12\bin\java.exe
+nssm set PMS_BACKEND AppDirectory C:\Projects\pms\backend
+nssm set PMS_BACKEND AppParameters "-jar pms-backend-1.0.0.jar --spring.profiles.active=prod"
 ```
 
-**5.3 以管理员身份运行安装**
-
 ```cmd
-deploy\nssm-install.bat
+nssm set PMS_BACKEND AppStdout C:\Projects\pms\backend\logs\stdout.log
+nssm set PMS_BACKEND AppStderr C:\Projects\pms\backend\logs\stderr.log
+nssm set PMS_BACKEND AppRotateFiles 1
 ```
 
-服务名：`PmsBackend`，日志：`C:\pms\logs\stdout.log`
-
-**5.4 验证后端**
-
 ```cmd
-nssm status PmsBackend
-curl http://127.0.0.1:8080/api/device/latest
+nssm start PMS_BACKEND
+nssm status PMS_BACKEND
 ```
 
 **常用维护命令：**
