@@ -263,8 +263,8 @@ html, body, #app {
 }
 
 .trend-panel {
-  width: 96vw;
-  height: 92vh;
+  width: 70vw;
+  height: 60vh;
   background: var(--panel-bg);
   border: 1px solid var(--border-color);
   border-radius: 12px;

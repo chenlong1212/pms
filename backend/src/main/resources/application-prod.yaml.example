@@ -5,6 +5,18 @@ spring:
     password: "your-password"
     driver-class-name: com.mysql.cj.jdbc.Driver
 
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 0
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.pms.entity
+  configuration:
+    map-underscore-to-camel-case: true
+
 logging:
   level:
     com.pms: INFO
