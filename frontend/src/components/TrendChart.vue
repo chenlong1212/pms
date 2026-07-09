@@ -3,7 +3,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import type { DeviceData } from '../api/device'
 
@@ -15,7 +15,7 @@ const chartRef = ref<HTMLDivElement>()
 let chart: echarts.ECharts | null = null
 
 function renderChart() {
-  if (!chartRef.value) return
+  if (!chartRef.value || !props.data.length) return
 
   if (!chart) {
     chart = echarts.init(chartRef.value, 'dark')
@@ -40,7 +40,7 @@ function renderChart() {
     grid: {
       left: '3%',
       right: '4%',
-      bottom: '12%',
+      bottom: '10%',
       top: 40,
       containLabel: true,
     },
@@ -103,22 +103,27 @@ function handleResize() {
   chart?.resize()
 }
 
-watch(() => props.data, renderChart, { deep: true })
+watch(() => props.data, async (newData) => {
+  if (newData?.length) {
+    await nextTick()
+    renderChart()
+  }
+}, { deep: true })
 
 onMounted(() => {
-  renderChart()
   window.addEventListener('resize', handleResize)
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
   chart?.dispose()
+  chart = null
 })
 </script>
 
 <style scoped>
 .trend-chart {
   width: 100%;
-  height: 420px;
+  height: 100%;
 }
 </style>
