@@ -45,26 +45,35 @@
       </section>
     </main>
 
-    <el-dialog
-      v-model="trendDialogVisible"
-      title="水质趋势"
-      width="90%"
-      top="4vh"
-      destroy-on-close
-      class="trend-dialog"
-      @opened="fetchTrend"
-    >
-      <div class="dialog-toolbar">
-        <el-radio-group v-model="trendHours" size="small" @change="fetchTrend">
-          <el-radio-button :value="6">6小时</el-radio-button>
-          <el-radio-button :value="12">12小时</el-radio-button>
-          <el-radio-button :value="24">24小时</el-radio-button>
-          <el-radio-button :value="72">3天</el-radio-button>
-          <el-radio-button :value="168">7天</el-radio-button>
-        </el-radio-group>
-      </div>
-      <TrendChart :data="trendData" />
-    </el-dialog>
+    <!-- 趋势图全屏弹窗 -->
+    <teleport to="body">
+      <transition name="trend-fade">
+        <div v-if="trendDialogVisible" class="trend-overlay" @click.self="trendDialogVisible = false">
+          <div class="trend-panel">
+            <div class="trend-header">
+              <h2>水质趋势</h2>
+              <div class="trend-toolbar">
+                <el-radio-group v-model="trendHours" size="small" @change="fetchTrend">
+                  <el-radio-button :value="6">6小时</el-radio-button>
+                  <el-radio-button :value="12">12小时</el-radio-button>
+                  <el-radio-button :value="24">24小时</el-radio-button>
+                  <el-radio-button :value="72">3天</el-radio-button>
+                  <el-radio-button :value="168">7天</el-radio-button>
+                </el-radio-group>
+                <button class="trend-close" @click="trendDialogVisible = false" aria-label="关闭">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="trend-body">
+              <TrendChart :data="trendData" />
+            </div>
+          </div>
+        </div>
+      </transition>
+    </teleport>
   </div>
 </template>
 
@@ -103,6 +112,7 @@ async function fetchTrend() {
 
 function openTrend() {
   trendDialogVisible.value = true
+  fetchTrend()
 }
 
 onMounted(() => {
@@ -242,9 +252,82 @@ html, body, #app {
   min-height: 320px;
 }
 
-.dialog-toolbar {
-  margin-bottom: 12px;
+.trend-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: center;
+}
+
+.trend-panel {
+  width: 96vw;
+  height: 92vh;
+  background: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.trend-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.trend-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.trend-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.trend-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.trend-close:hover {
+  background: var(--border-color);
+  color: var(--text-primary);
+}
+
+.trend-body {
+  flex: 1;
+  min-height: 0;
+  padding: 16px;
+}
+
+.trend-fade-enter-active,
+.trend-fade-leave-active {
+  transition: opacity 0.25s ease;
+}
+
+.trend-fade-enter-from,
+.trend-fade-leave-to {
+  opacity: 0;
 }
 </style>
