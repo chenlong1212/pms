@@ -7,7 +7,7 @@
 | 层级 | 技术 |
 |------|------|
 | 前端 | Vue 3 + TypeScript + Vite + Element Plus + ECharts + hls.js |
-| 后端 | Spring Boot 3.2 + Java 17 + MyBatis |
+| 后端 | Spring Boot 3.2 + Java 17 + MyBatis + Flyway |
 | 数据库 | MySQL 8 |
 | 部署 | Windows + Nginx + NSSM + Spring Boot jar |
 
@@ -44,11 +44,14 @@ pms/
 │       ├── application-local.yaml   # 本地配置（不提交 Git）
 │       ├── application-prod.yaml    # 生产配置（不提交 Git）
 │       ├── application-local.yaml.example
-│       └── application-prod.yaml.example
+│       ├── application-prod.yaml.example
+│       └── db/migration/            # Flyway 数据库迁移脚本
+│           ├── V1__init_device_data_record.sql
+│           └── V2__xxx.sql          # 新增表/字段
 ├── frontend/                        # Vue 3 前端
 ├── deploy/
-│   ├── init.sql                     # 本地数据库初始化
-│   ├── init-prod.sql                # 生产数据库初始化
+│   ├── init.sql                     # 本地数据库初始化（保留供参考）
+│   ├── init-prod.sql                # 生产数据库初始化（保留供参考）
 │   ├── nginx-windows.conf           # Windows Nginx 配置参考
 │   ├── nssm-install.bat             # 注册后端 Windows 服务
 │   └── nssm-uninstall.bat           # 卸载后端 Windows 服务
@@ -90,6 +93,8 @@ mysql -u root -p < deploy/init.sql
 
 会创建 `pms_local` 和 `pms_prod` 两个库及表结构。本地开发使用 `pms_local`。
 
+> **注意：** 首次启动后端时 Flyway 会自动对数据库执行基线（baseline）和迁移脚本，无需手动建表。
+
 ### 3. 启动后端
 
 ```bash
@@ -99,6 +104,7 @@ mvn spring-boot:run
 
 - 端口：`8080`
 - 定时任务每 10 分钟自动采集一次设备数据
+- Flyway 会在启动时自动执行数据库迁移
 
 ### 4. 启动前端
 
@@ -117,25 +123,70 @@ npm run dev
 
 ---
 
-## 二、生产部署
+## 二、数据库迁移（Flyway）
+
+项目使用 [Flyway](https://flywaydb.org/) 管理数据库结构变更，确保本地和生产环境表结构一致。
+
+### 工作原理
+
+```
+db/migration/
+├── V1__init_device_data_record.sql    ← 初始建表
+├── V2__xxx.sql                        ← 新增表或字段
+└── V3__yyy.sql                        ← 更多变更
+```
+
+- **增量脚本**：每个文件只描述变更（CREATE TABLE、ALTER TABLE），不写 CREATE DATABASE
+- **版本管理**：`V{序号}__{描述}.sql` 命名规则，Flyway 自动按顺序执行
+- **幂等性**：Flyway 通过 `flyway_schema_history` 表跟踪已执行的脚本，不会重复执行
+- **本地生产一致**：同一套脚本在本地和生产环境自动执行，表结构始终保持同步
+
+### 新增表或字段
+
+1. 在 `backend/src/main/resources/db/migration/` 下创建新文件
+2. 文件名格式：`V{下一个序号}__{描述}.sql`
+3. 编写增量 SQL（不要写 CREATE DATABASE）
+4. 提交到 Git，本地重启后端或生产重启 jar 即可自动生效
+
+示例：
+
+```sql
+-- backend/src/main/resources/db/migration/V2__add_alert_config.sql
+CREATE TABLE IF NOT EXISTS alert_config (
+    id          BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    device_id   VARCHAR(32)  NOT NULL,
+    dox_min     DECIMAL(10,2),
+    dox_max     DECIMAL(10,2),
+    enabled     TINYINT      NOT NULL DEFAULT 1,
+    created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+### 已有数据库迁移
+
+如果数据库已有数据但未使用 Flyway，启动时会自动执行基线（baseline），将现有表结构标记为已迁移，后续脚本从下一个版本号开始。
 
 ---
 
+## 三、生产部署
+
 ### 步骤 1：初始化生产数据库
 
-将 `deploy/init-prod.sql` 复制到服务器，执行：
+新建服务器上的 `pms_prod` 数据库（只需执行一次）：
 
 ```cmd
-mysql -u root -p < deploy\init-prod.sql
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS pms_prod DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 ```
 
-会创建数据库 `pms_prod` 及表 `device_data_record`。
+> **不需要执行 `init-prod.sql`**，Flyway 会在后端首次启动时自动创建所有表结构。
 
-验证：
+验证数据库已创建：
 
 ```cmd
 mysql -u root -p -e "USE pms_prod; SHOW TABLES;"
 ```
+
+首次启动后 Flyway 会自动建表，再次执行即可看到 `device_data_record` 等表。
 
 ---
 
@@ -238,9 +289,9 @@ nssm status PMS_BACKEND
 
 | 操作 | 命令 |
 |------|------|
-| 查看状态 | `nssm status PmsBackend` |
-| 重启服务 | `nssm restart PmsBackend` |
-| 停止服务 | `nssm stop PmsBackend` |
+| 查看状态 | `nssm status PMS_BACKEND` |
+| 重启服务 | `nssm restart PMS_BACKEND` |
+| 停止服务 | `nssm stop PMS_BACKEND` |
 | 卸载服务 | `deploy\nssm-uninstall.bat` |
 
 ---
@@ -315,7 +366,7 @@ nginx.exe
 
 ---
 
-## 三、日常更新维护
+## 四、日常更新维护
 
 ### 更新后端
 
@@ -326,7 +377,7 @@ cd backend && mvn clean package -DskipTests
 # 上传 jar 覆盖 C:\pms\pms-backend-1.0.0.jar
 
 # 服务器重启服务
-nssm restart PmsBackend
+nssm restart PMS_BACKEND
 ```
 
 ### 更新前端
@@ -341,9 +392,27 @@ cd frontend && npm run build
 cd C:\nginx && nginx.exe -s reload
 ```
 
+### 数据库变更（新增表/字段）
+
+```bash
+# 1. 开发机创建迁移脚本
+# backend/src/main/resources/db/migration/V3__xxx.sql
+
+# 2. 提交到 Git
+git add backend/src/main/resources/db/migration/
+git commit -m "add xxx table"
+git push origin develop
+
+# 3. 服务器重启后端，Flyway 自动执行迁移
+nssm restart PmsBackend
+
+# 4. 验证迁移结果
+mysql -u root -p -e "USE pms_prod; SELECT * FROM flyway_schema_history;"
+```
+
 ---
 
-## 四、敏感配置管理
+## 五、敏感配置管理
 
 | 文件 | 提交 Git | 说明 |
 |------|----------|------|
@@ -356,11 +425,11 @@ cd C:\nginx && nginx.exe -s reload
 
 ---
 
-## 五、配置文件说明
+## 六、配置文件说明
 
 | 文件 | 用途 |
 |------|------|
-| `application.yaml` | 公共配置（设备 API、定时任务间隔、MyBatis） |
+| `application.yaml` | 公共配置（设备 API、定时任务间隔、MyBatis、Flyway） |
 | `application-local.yaml` | 本地数据库、视频流地址 |
 | `application-prod.yaml` | 生产数据库、视频流地址 |
 
@@ -379,11 +448,19 @@ device:
 # 监控视频流
 video:
   stream-url: https://...m3u8?proto=https&source=open
+
+# 数据库迁移（Flyway）
+spring:
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true   # 已有数据库自动基线
+    baseline-version: 0
 ```
 
 ---
 
-## 六、API 接口
+## 七、API 接口
 
 | 接口 | 方法 | 说明 |
 |------|------|------|
@@ -394,7 +471,7 @@ video:
 
 ---
 
-## 七、推送到 GitHub
+## 八、推送到 GitHub
 
 ```bash
 git add .
@@ -403,4 +480,3 @@ git push origin develop
 ```
 
 仓库地址：https://github.com/chenlong1212/pms.git
-
