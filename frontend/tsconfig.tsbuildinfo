@@ -1,0 +1,1 @@
+{"root":["./src/main.ts","./src/vite-env.d.ts","./src/api/device.ts","./src/api/video.ts","./src/app.vue","./src/components/trendchart.vue","./src/components/videoplayer.vue"],"version":"5.9.3"}

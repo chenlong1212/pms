@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+backend/target/
+
+# Build output
+frontend/dist/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Runtime
+app.pid
+deploy/app.pid
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Local secrets (use .example templates)
+backend/src/main/resources/application-local.yaml
+backend/src/main/resources/application-prod.yaml

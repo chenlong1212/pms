@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: pms-backend
+  profiles:
+    active: local
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.pms.entity
+  configuration:
+    map-underscore-to-camel-case: true
+
+server:
+  port: 8080
+
+device:
+  api:
+    base-url: http://121.40.165.95:8556
+    device-id: "11202305124"
+  schedule:
+    enabled: true
+    fixed-rate-ms: 600000

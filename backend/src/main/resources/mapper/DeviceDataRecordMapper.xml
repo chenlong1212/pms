@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.pms.mapper.DeviceDataRecordMapper">
+
+    <resultMap id="BaseResultMap" type="com.pms.entity.DeviceDataRecord">
+        <id column="id" property="id"/>
+        <result column="device_id" property="deviceId"/>
+        <result column="dox" property="dox"/>
+        <result column="ph" property="ph"/>
+        <result column="thw" property="thw"/>
+        <result column="collect_time_str" property="collectTimeStr"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO device_data_record (device_id, dox, ph, thw, collect_time_str, created_at)
+        VALUES (#{deviceId}, #{dox}, #{ph}, #{thw}, #{collectTimeStr}, #{createdAt})
+    </insert>
+
+    <select id="countByDeviceIdAndCollectTimeStr" resultType="int">
+        SELECT COUNT(*)
+        FROM device_data_record
+        WHERE device_id = #{deviceId}
+          AND collect_time_str = #{collectTimeStr}
+    </select>
+
+    <select id="findLatestByDeviceId" resultMap="BaseResultMap">
+        SELECT id, device_id, dox, ph, thw, collect_time_str, created_at
+        FROM device_data_record
+        WHERE device_id = #{deviceId}
+        ORDER BY collect_time_str DESC
+        LIMIT 1
+    </select>
+
+    <select id="findHistory" resultMap="BaseResultMap">
+        SELECT id, device_id, dox, ph, thw, collect_time_str, created_at
+        FROM device_data_record
+        WHERE device_id = #{deviceId}
+        <if test="startTime != null and startTime != ''">
+            AND collect_time_str &gt;= #{startTime}
+        </if>
+        <if test="endTime != null and endTime != ''">
+            AND collect_time_str &lt;= #{endTime}
+        </if>
+        ORDER BY collect_time_str DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countHistory" resultType="long">
+        SELECT COUNT(*)
+        FROM device_data_record
+        WHERE device_id = #{deviceId}
+        <if test="startTime != null and startTime != ''">
+            AND collect_time_str &gt;= #{startTime}
+        </if>
+        <if test="endTime != null and endTime != ''">
+            AND collect_time_str &lt;= #{endTime}
+        </if>
+    </select>
+
+    <select id="findTrendData" resultMap="BaseResultMap">
+        SELECT id, device_id, dox, ph, thw, collect_time_str, created_at
+        FROM device_data_record
+        WHERE device_id = #{deviceId}
+          AND collect_time_str &gt;= #{startTime}
+        ORDER BY collect_time_str ASC
+    </select>
+
+</mapper>

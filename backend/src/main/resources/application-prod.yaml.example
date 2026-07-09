@@ -1,0 +1,15 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/pms_prod?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: root
+    password: "your-password"
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+logging:
+  level:
+    com.pms: INFO
+  file:
+    name: logs/pms.log
+
+video:
+  stream-url: https://your-stream-url-here.m3u8?proto=https&source=open
