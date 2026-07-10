@@ -12,4 +12,7 @@ public interface BiomassRecordMapper {
     List<BiomassRecord> findTrendData(@Param("pondId") int pondId,
                                       @Param("startDate") String startDate,
                                       @Param("endDate") String endDate);
+
+    BiomassRecord findByPondAndDate(@Param("pondId") int pondId,
+                                    @Param("recordDate") String recordDate);
 }

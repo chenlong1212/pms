@@ -69,6 +69,8 @@
           <div v-else class="biomass-empty">暂无生物量数据</div>
         </div>
       </section>
+
+      <FeedingRecordSection />
     </main>
 
     <!-- 趋势图全屏弹窗 -->
@@ -109,6 +111,7 @@ import { ElMessage } from 'element-plus'
 import TrendChart from './components/TrendChart.vue'
 import VideoPlayer from './components/VideoPlayer.vue'
 import BiomassTrendChart from './components/BiomassTrendChart.vue'
+import FeedingRecordSection from './components/FeedingRecordSection.vue'
 import { getLatest, getTrend, type DeviceData } from './api/device'
 import { getPonds, getBiomassTrend, type Pond, type BiomassTrend } from './api/biomass'
 
