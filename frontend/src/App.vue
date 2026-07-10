@@ -16,16 +16,40 @@
               {{ latestData?.dox ?? '--' }}
               <span class="metric-unit">mg/L</span>
             </div>
+            <div class="metric-predictions">
+              <div v-for="min in predictMinutes" :key="`dox-${min}`" class="predict-row">
+                <span class="predict-label">{{ min }}分钟后</span>
+                <span class="predict-value dox">
+                  {{ formatPredictValue(predictions.dox[min]) }}
+                  <span class="predict-unit">mg/L</span>
+                </span>
+              </div>
+            </div>
           </div>
           <div class="metric-item">
             <div class="metric-label">pH</div>
             <div class="metric-value ph">{{ latestData?.ph ?? '--' }}</div>
+            <div class="metric-predictions">
+              <div v-for="min in predictMinutes" :key="`ph-${min}`" class="predict-row">
+                <span class="predict-label">{{ min }}分钟后</span>
+                <span class="predict-value ph">{{ formatPredictValue(predictions.ph[min]) }}</span>
+              </div>
+            </div>
           </div>
           <div class="metric-item">
             <div class="metric-label">水温</div>
             <div class="metric-value thw">
               {{ latestData?.thw ?? '--' }}
               <span class="metric-unit">℃</span>
+            </div>
+            <div class="metric-predictions">
+              <div v-for="min in predictMinutes" :key="`thw-${min}`" class="predict-row">
+                <span class="predict-label">{{ min }}分钟后</span>
+                <span class="predict-value thw">
+                  {{ formatPredictValue(predictions.thw[min], 1) }}
+                  <span class="predict-unit">℃</span>
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -106,7 +130,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import TrendChart from './components/TrendChart.vue'
 import VideoPlayer from './components/VideoPlayer.vue'
@@ -114,11 +138,17 @@ import BiomassTrendChart from './components/BiomassTrendChart.vue'
 import FeedingRecordSection from './components/FeedingRecordSection.vue'
 import { getLatest, getTrend, type DeviceData } from './api/device'
 import { getPonds, getBiomassTrend, type Pond, type BiomassTrend } from './api/biomass'
+import { linearPredict, parseCollectTime, formatPredictValue } from './utils/predict'
+
+const predictMinutes = [10, 30, 60] as const
+type MetricKey = 'dox' | 'ph' | 'thw'
+type PredictMap = Record<(typeof predictMinutes)[number], number | null>
 
 const loading = ref(false)
 const latestData = ref<DeviceData | null>(null)
 const trendDialogVisible = ref(false)
 const trendData = ref<DeviceData[]>([])
+const predictTrendData = ref<DeviceData[]>([])
 const trendHours = ref(24)
 const ponds = ref<Pond[]>([])
 const selectedPondId = ref<number | null>(null)
@@ -145,6 +175,32 @@ async function fetchTrend() {
     ElMessage.error('获取趋势数据失败')
   }
 }
+
+async function fetchPredictTrend() {
+  try {
+    const res = await getTrend(6)
+    predictTrendData.value = res.data.data
+  } catch {
+    // 预测数据获取失败时静默处理，不影响主流程
+  }
+}
+
+function buildMetricPredictions(key: MetricKey): PredictMap {
+  const recent = predictTrendData.value.slice(-12)
+  const points = recent
+    .map((d) => ({ time: parseCollectTime(d.collectTimeStr), value: d[key] }))
+    .filter((p) => !Number.isNaN(p.time) && p.value != null)
+
+  return Object.fromEntries(
+    predictMinutes.map((min) => [min, linearPredict(points, min)]),
+  ) as PredictMap
+}
+
+const predictions = computed(() => ({
+  dox: buildMetricPredictions('dox'),
+  ph: buildMetricPredictions('ph'),
+  thw: buildMetricPredictions('thw'),
+}))
 
 function openTrend() {
   trendDialogVisible.value = true
@@ -177,10 +233,14 @@ async function fetchBiomassTrend() {
   }
 }
 
+async function refreshData() {
+  await Promise.all([fetchLatest(), fetchPredictTrend()])
+}
+
 onMounted(() => {
   loading.value = true
-  Promise.all([fetchLatest(), fetchPonds()]).finally(() => { loading.value = false })
-  refreshTimer = setInterval(fetchLatest, 60_000)
+  Promise.all([refreshData(), fetchPonds()]).finally(() => { loading.value = false })
+  refreshTimer = setInterval(refreshData, 60_000)
 })
 
 onUnmounted(() => {
@@ -287,6 +347,37 @@ html, body, #app {
 .dox { color: #58a6ff; }
 .ph { color: #3fb950; }
 .thw { color: #d29922; }
+
+.metric-predictions {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+  text-align: left;
+}
+
+.predict-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.predict-label {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.predict-value {
+  font-weight: 500;
+}
+
+.predict-unit {
+  font-weight: 400;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
 
 .collect-time {
   font-size: 13px;
