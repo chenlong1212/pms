@@ -42,10 +42,12 @@
   --font-mono: 'JetBrains Mono', 'Noto Sans SC', monospace;
 
   /* Layout */
-  --content-max: 1440px;
-  --panel-radius: 12px;
-  --panel-padding: 24px;
-  --section-gap: 20px;
+  --content-max: 1600px;
+  --sidebar-width: 320px;
+  --panel-radius: 10px;
+  --panel-padding: 20px;
+  --section-gap: 12px;
+  --header-height: 52px;
 
   /* Chart tokens */
   --chart-axis: #4a6580;
@@ -67,7 +69,8 @@ html, body, #app {
   margin: 0;
   padding: 0;
   width: 100%;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   background: var(--app-bg);
   background-image: var(--app-bg-gradient);
   background-attachment: fixed;
@@ -100,7 +103,7 @@ html, body, #app {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   flex-wrap: wrap;
 }
 
@@ -137,7 +140,8 @@ html, body, #app {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 200px;
+  height: 100%;
+  min-height: 0;
   color: var(--text-secondary);
   font-size: 14px;
 }
@@ -145,6 +149,25 @@ html, body, #app {
 .empty-state__hint {
   font-size: 12px;
   color: var(--text-muted);
+}
+
+/* Module placeholder */
+.module-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel-bg);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--panel-radius);
+  color: var(--text-muted);
+  font-size: 13px;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.module-placeholder--tall {
+  min-height: 0;
 }
 
 /* Live badge */

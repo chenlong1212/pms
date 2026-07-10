@@ -1,109 +1,100 @@
 <template>
   <div class="app-layout">
     <header class="app-header">
-      <h1>水质监测系统</h1>
+      <h1 class="app-header__title">池塘生产管理系统</h1>
+      <div class="app-header__waterline" aria-hidden="true" />
     </header>
 
-    <main v-loading="loading" class="app-main">
-      <section
-        class="metrics-panel clickable"
-        @click="openTrend"
-      >
-        <div class="metrics-row">
-          <div class="metric-item">
-            <div class="metric-label">溶解氧</div>
-            <div class="metric-value dox">
-              {{ latestData?.dox ?? '--' }}
-              <span class="metric-unit">mg/L</span>
+    <main v-loading="loading" class="app-body">
+      <aside class="sidebar">
+        <p class="collect-time">
+          最新采集时间：{{ latestData?.collectTimeStr ?? '暂无数据' }}
+        </p>
+
+        <div class="metric-cards">
+          <div
+            v-for="metric in metrics"
+            :key="metric.key"
+            class="metric-card panel metric-card--clickable"
+            :class="`metric-card--${metric.key}`"
+            @click="openTrend"
+          >
+            <div class="metric-card__current">
+              <span class="metric-card__label">{{ metric.label }}</span>
+              <span class="metric-card__value" :class="metric.key">
+                {{ metric.value }}
+                <span v-if="metric.unit" class="metric-card__unit">{{ metric.unit }}</span>
+              </span>
             </div>
-            <div class="metric-predictions">
-              <div v-for="min in predictMinutes" :key="`dox-${min}`" class="predict-row">
+            <div class="metric-card__predictions">
+              <div
+                v-for="min in predictMinutes"
+                :key="`${metric.key}-${min}`"
+                class="predict-row"
+              >
                 <span class="predict-label">{{ min }}分钟后</span>
-                <span class="predict-value dox">
-                  {{ formatPredictValue(predictions.dox[min]) }}
-                  <span class="predict-unit">mg/L</span>
-                </span>
-              </div>
-            </div>
-          </div>
-          <div class="metric-item">
-            <div class="metric-label">pH</div>
-            <div class="metric-value ph">{{ latestData?.ph ?? '--' }}</div>
-            <div class="metric-predictions">
-              <div v-for="min in predictMinutes" :key="`ph-${min}`" class="predict-row">
-                <span class="predict-label">{{ min }}分钟后</span>
-                <span class="predict-value ph">{{ formatPredictValue(predictions.ph[min]) }}</span>
-              </div>
-            </div>
-          </div>
-          <div class="metric-item">
-            <div class="metric-label">水温</div>
-            <div class="metric-value thw">
-              {{ latestData?.thw ?? '--' }}
-              <span class="metric-unit">℃</span>
-            </div>
-            <div class="metric-predictions">
-              <div v-for="min in predictMinutes" :key="`thw-${min}`" class="predict-row">
-                <span class="predict-label">{{ min }}分钟后</span>
-                <span class="predict-value thw">
-                  {{ formatPredictValue(predictions.thw[min], 1) }}
-                  <span class="predict-unit">℃</span>
+                <span class="predict-value" :class="metric.key">
+                  {{ formatPredictValue(predictions[metric.key][min], metric.precision) }}
+                  <span v-if="metric.unit" class="predict-unit">{{ metric.unit }}</span>
                 </span>
               </div>
             </div>
           </div>
         </div>
-        <div class="collect-time">
-          最新采集：{{ latestData?.collectTimeStr ?? '暂无数据' }}
-        </div>
-      </section>
 
-      <section class="placeholder-section">
-        <VideoPlayer />
-      </section>
+        <VideoPlayer class="sidebar-video" compact />
+      </aside>
 
-      <section class="biomass-section">
-        <div class="biomass-header">
-          <h2>生物量估计与计数</h2>
-          <div class="biomass-toolbar">
-            <el-select
-              v-model="selectedPondId"
-              placeholder="选择鱼塘"
-              style="width: 180px"
-              @change="fetchBiomassTrend"
-            >
-              <el-option
-                v-for="pond in ponds"
-                :key="pond.id"
-                :label="`${pond.name}（${pond.fishSpecies}）`"
-                :value="pond.id"
-              />
-            </el-select>
-            <el-radio-group v-model="biomassDays" size="small" @change="fetchBiomassTrend">
-              <el-radio-button :value="7">7天</el-radio-button>
-              <el-radio-button :value="30">30天</el-radio-button>
-              <el-radio-button :value="90">90天</el-radio-button>
-              <el-radio-button :value="180">180天</el-radio-button>
-              <el-radio-button :value="365">365天</el-radio-button>
-            </el-radio-group>
+      <div class="main-content">
+        <section class="biomass-section panel panel--padded">
+          <div class="section-header">
+            <h2 class="section-title">生物量估计与计数</h2>
+            <div class="section-toolbar">
+              <el-select
+                v-model="selectedPondId"
+                placeholder="选择池塘"
+                style="width: 200px"
+                @change="fetchBiomassTrend"
+              >
+                <el-option
+                  v-for="pond in ponds"
+                  :key="pond.id"
+                  :label="`${pond.name}（${pond.fishSpecies}）`"
+                  :value="pond.id"
+                />
+              </el-select>
+              <el-radio-group v-model="biomassDays" size="small" @change="fetchBiomassTrend">
+                <el-radio-button :value="7">7天</el-radio-button>
+                <el-radio-button :value="30">30天</el-radio-button>
+                <el-radio-button :value="90">90天</el-radio-button>
+                <el-radio-button :value="180">180天</el-radio-button>
+                <el-radio-button :value="365">365天</el-radio-button>
+              </el-radio-group>
+            </div>
           </div>
-        </div>
-        <div v-loading="biomassLoading" class="biomass-body">
-          <BiomassTrendChart v-if="biomassTrendData" :data="biomassTrendData" />
-          <div v-else class="biomass-empty">暂无生物量数据</div>
-        </div>
-      </section>
+          <div v-loading="biomassLoading" class="biomass-body">
+            <BiomassTrendChart v-if="biomassTrendData" :data="biomassTrendData" />
+            <div v-else class="empty-state">暂无生物量数据</div>
+          </div>
+        </section>
 
-      <FeedingRecordSection />
+        <div class="modules-grid">
+          <div class="modules-col modules-col--left">
+            <FeedingRecordSection compact />
+            <div class="module-placeholder">待开发模块 2</div>
+          </div>
+          <div class="module-placeholder module-placeholder--tall">待开发模块 3</div>
+          <div class="module-placeholder module-placeholder--tall">待开发模块 1</div>
+        </div>
+      </div>
     </main>
 
-    <!-- 趋势图全屏弹窗 -->
     <teleport to="body">
       <transition name="trend-fade">
         <div v-if="trendDialogVisible" class="trend-overlay" @click.self="trendDialogVisible = false">
-          <div class="trend-panel">
+          <div class="trend-panel panel">
             <div class="trend-header">
-              <h2>水质趋势</h2>
+              <h2 class="section-title">水质趋势</h2>
               <div class="trend-toolbar">
                 <el-radio-group v-model="trendHours" size="small" @change="fetchTrend">
                   <el-radio-button :value="6">6小时</el-radio-button>
@@ -158,6 +149,30 @@ const biomassLoading = ref(false)
 
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 
+const metrics = computed(() => [
+  {
+    key: 'dox' as const,
+    label: '溶解氧 mg/L',
+    value: latestData.value?.dox ?? '--',
+    unit: '',
+    precision: 2,
+  },
+  {
+    key: 'ph' as const,
+    label: 'pH',
+    value: latestData.value?.ph ?? '--',
+    unit: '',
+    precision: 2,
+  },
+  {
+    key: 'thw' as const,
+    label: '水温 ℃',
+    value: latestData.value?.thw ?? '--',
+    unit: '',
+    precision: 1,
+  },
+])
+
 async function fetchLatest() {
   try {
     const res = await getLatest()
@@ -181,7 +196,7 @@ async function fetchPredictTrend() {
     const res = await getTrend(6)
     predictTrendData.value = res.data.data
   } catch {
-    // 预测数据获取失败时静默处理，不影响主流程
+    // 预测数据获取失败时静默处理
   }
 }
 
@@ -248,247 +263,266 @@ onUnmounted(() => {
 })
 </script>
 
-<style>
-:root {
-  --app-bg: #0d1117;
-  --panel-bg: #161b22;
-  --border-color: #30363d;
-  --text-primary: #e6edf3;
-  --text-secondary: #8b949e;
-}
-
-html, body, #app {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  min-height: 100vh;
-  background: var(--app-bg);
-  color: var(--text-primary);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}
-
-* {
-  box-sizing: border-box;
-}
-</style>
-
 <style scoped>
 .app-layout {
-  min-height: 100vh;
-  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .app-header {
+  position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  padding: 16px 24px;
+  justify-content: center;
+  height: var(--header-height);
+  padding: 0 24px;
   background: var(--panel-bg);
   border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
 }
 
-.app-header h1 {
+.app-header__title {
+  margin: 0;
+  font-family: var(--font-display);
   font-size: 20px;
   font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-primary);
+}
+
+.app-header__waterline {
+  position: absolute;
+  bottom: 0;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: var(--waterline);
+  opacity: 0.7;
+}
+
+.app-body {
+  flex: 1;
+  display: flex;
+  gap: var(--section-gap);
+  padding: var(--section-gap);
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Sidebar */
+.sidebar {
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.collect-time {
   margin: 0;
-}
-
-.app-main {
-  padding: 20px 24px;
-  min-height: calc(100vh - 60px);
-}
-
-.metrics-panel {
-  margin-bottom: 20px;
-  padding: 24px 16px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
   background: var(--panel-bg);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  transition: border-color 0.2s, transform 0.15s;
+  border-radius: var(--panel-radius);
+  flex-shrink: 0;
 }
 
-.metrics-panel.clickable {
+.metric-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.metric-card {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  padding: 10px 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.metric-card--clickable {
   cursor: pointer;
 }
 
-.metrics-panel.clickable:hover {
-  border-color: #58a6ff;
-  transform: translateY(-2px);
+.metric-card--clickable:hover {
+  border-color: var(--color-dox);
+  box-shadow: 0 0 0 1px rgba(86, 180, 233, 0.15);
 }
 
-.metrics-row {
+.metric-card--dox { background: linear-gradient(135deg, var(--panel-bg) 60%, var(--color-dox-dim)); }
+.metric-card--ph { background: linear-gradient(135deg, var(--panel-bg) 60%, var(--color-ph-dim)); }
+.metric-card--thw { background: linear-gradient(135deg, var(--panel-bg) 60%, var(--color-thw-dim)); }
+
+.metric-card__current {
+  flex: 0 0 auto;
   display: flex;
-  gap: 16px;
-  margin-bottom: 16px;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 90px;
 }
 
-.metric-item {
-  flex: 1;
-  text-align: center;
-}
-
-.metric-label {
-  font-size: 14px;
+.metric-card__label {
+  font-size: 12px;
   color: var(--text-secondary);
-  margin-bottom: 12px;
+  margin-bottom: 6px;
+  white-space: nowrap;
 }
 
-.metric-value {
-  font-size: 36px;
+.metric-card__value {
+  font-family: var(--font-mono);
+  font-size: 24px;
   font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
 }
 
-.metric-unit {
-  font-size: 16px;
+.metric-card__unit {
+  font-size: 14px;
   font-weight: 400;
   color: var(--text-secondary);
-  margin-left: 4px;
+  margin-left: 2px;
 }
 
-.dox { color: #58a6ff; }
-.ph { color: #3fb950; }
-.thw { color: #d29922; }
+.dox { color: var(--color-dox); }
+.ph { color: var(--color-ph); }
+.thw { color: var(--color-thw); }
 
-.metric-predictions {
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border-color);
-  text-align: left;
+.metric-card__predictions {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-left: 12px;
+  border-left: 1px solid var(--border-subtle);
 }
 
 .predict-row {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   gap: 8px;
-  font-size: 12px;
-  line-height: 1.8;
+  font-size: 11px;
+  line-height: 1.9;
 }
 
 .predict-label {
-  color: var(--text-secondary);
+  color: var(--text-muted);
   flex-shrink: 0;
 }
 
 .predict-value {
+  font-family: var(--font-mono);
   font-weight: 500;
+  font-size: 12px;
 }
 
 .predict-unit {
   font-weight: 400;
-  color: var(--text-secondary);
-  font-size: 11px;
+  color: var(--text-muted);
+  font-size: 10px;
 }
 
-.collect-time {
-  font-size: 13px;
-  color: var(--text-secondary);
-  text-align: center;
+.sidebar-video {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.placeholder-section {
-  margin-bottom: 20px;
-}
-
-.placeholder-box {
-  min-height: 200px;
-  border: 1px dashed var(--border-color);
-  border-radius: 8px;
+/* Main content */
+.main-content {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--panel-bg);
-  color: var(--text-secondary);
-  font-size: 14px;
-}
-
-.placeholder-box.large {
-  min-height: 320px;
+  flex-direction: column;
+  gap: var(--section-gap);
+  overflow: hidden;
 }
 
 .biomass-section {
-  margin-bottom: 20px;
-  padding: 20px 24px;
-  background: var(--panel-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-}
-
-.biomass-header {
+  flex: 3;
+  min-height: 0;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 12px 16px !important;
 }
 
-.biomass-header h2 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.biomass-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
+.biomass-section .section-header {
+  margin-bottom: 8px;
+  flex-shrink: 0;
 }
 
 .biomass-body {
-  min-height: 760px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.biomass-empty {
-  min-height: 320px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-secondary);
-  font-size: 14px;
+.modules-grid {
+  flex: 7;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--section-gap);
+  min-height: 0;
+  overflow: hidden;
 }
 
+.modules-col--left {
+  display: grid;
+  grid-template-rows: 2fr 1fr;
+  gap: var(--section-gap);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.modules-col--left > :first-child {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Trend modal */
 .trend-overlay {
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(5, 12, 20, 0.75);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .trend-panel {
-  width: 70vw;
-  height: 60vh;
-  background: var(--panel-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
+  width: min(900px, 88vw);
+  height: min(560px, 72vh);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
 .trend-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 24px;
+  padding: 16px 20px;
   border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
-}
-
-.trend-header h2 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-primary);
 }
 
 .trend-toolbar {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
 
 .trend-close {
@@ -507,14 +541,19 @@ html, body, #app {
 }
 
 .trend-close:hover {
-  background: var(--border-color);
+  background: var(--border-subtle);
   color: var(--text-primary);
+}
+
+.trend-close:focus-visible {
+  outline: 2px solid var(--color-dox);
+  outline-offset: 2px;
 }
 
 .trend-body {
   flex: 1;
   min-height: 0;
-  padding: 16px;
+  padding: 12px 16px 16px;
 }
 
 .trend-fade-enter-active,
@@ -525,5 +564,58 @@ html, body, #app {
 .trend-fade-enter-from,
 .trend-fade-leave-to {
   opacity: 0;
+}
+
+@media (max-width: 1100px) {
+  html, body, #app {
+    height: auto;
+    min-height: 100vh;
+    overflow: auto;
+  }
+
+  .app-layout {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .app-body {
+    flex-direction: column;
+    overflow: visible;
+  }
+
+  .sidebar {
+    width: 100%;
+    min-height: 480px;
+  }
+
+  .metric-cards {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .metric-card {
+    flex: 1;
+    min-width: 240px;
+  }
+
+  .main-content {
+    overflow: visible;
+  }
+
+  .biomass-section {
+    flex: none;
+    min-height: 280px;
+  }
+
+  .modules-grid {
+    flex: none;
+    grid-template-columns: 1fr;
+    min-height: 480px;
+  }
+
+  .modules-col--left {
+    grid-template-rows: auto auto;
+  }
 }
 </style>

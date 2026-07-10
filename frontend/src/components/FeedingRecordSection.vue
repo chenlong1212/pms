@@ -1,7 +1,7 @@
 <template>
-  <section class="feeding-section">
+  <section class="feeding-section panel" :class="{ 'feeding-section--compact': compact }">
     <div class="feeding-header">
-      <h2>投喂记录</h2>
+      <h2 class="section-title">投喂记录</h2>
       <div class="feeding-toolbar">
         <el-select
           v-model="selectedPondId"
@@ -25,11 +25,12 @@
       <FeedingRecordTable
         v-if="records.length"
         :records="records"
+        :compact="compact"
         @edit="openEditDialog"
         @delete="handleDelete"
         @load-more="loadMore"
       />
-      <div v-else-if="!loading" class="feeding-empty">暂无投喂记录</div>
+      <div v-else-if="!loading" class="empty-state">暂无投喂记录</div>
     </div>
 
     <el-dialog
@@ -136,6 +137,10 @@ import {
   type FeedingRecord,
   type FeedingStrategy,
 } from '../api/feeding'
+
+defineProps<{
+  compact?: boolean
+}>()
 
 const PAGE_SIZE = 20
 
@@ -369,26 +374,27 @@ onMounted(() => {
 
 <style scoped>
 .feeding-section {
-  margin-bottom: 20px;
-  padding: 20px 24px;
-  background: var(--panel-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  padding: 12px 16px;
+}
+
+.feeding-section--compact {
+  flex: none;
+  height: 100%;
 }
 
 .feeding-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 12px;
+  margin-bottom: 8px;
   flex-wrap: wrap;
-}
-
-.feeding-header h2 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
+  flex-shrink: 0;
 }
 
 .feeding-toolbar {
@@ -399,16 +405,9 @@ onMounted(() => {
 }
 
 .feeding-body {
-  min-height: 360px;
-}
-
-.feeding-empty {
-  min-height: 200px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-secondary);
-  font-size: 14px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .strategy-buttons {
