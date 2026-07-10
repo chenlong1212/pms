@@ -30,6 +30,6 @@ deploy/app.pid
 .env.local
 .env.*.local
 
-# Local secrets (use .example templates)
-backend/src/main/resources/application-local.yaml
-backend/src/main/resources/application-prod.yaml
+# 生产部署脚本（含服务器凭据，仅保留本地）
+deploy/一键部署生产环境.command
+deploy/一键打包并部署生产环境.command
