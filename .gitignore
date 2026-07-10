@@ -29,7 +29,3 @@ deploy/app.pid
 .env
 .env.local
 .env.*.local
-
-# Local secrets (use .example templates)
-backend/src/main/resources/application-local.yaml
-backend/src/main/resources/application-prod.yaml
