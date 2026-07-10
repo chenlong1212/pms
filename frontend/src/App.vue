@@ -38,9 +38,35 @@
         <VideoPlayer />
       </section>
 
-      <section class="placeholder-section">
-        <div class="placeholder-box large">
-          <span>预留功能区域</span>
+      <section class="biomass-section">
+        <div class="biomass-header">
+          <h2>生物量估计与计数</h2>
+          <div class="biomass-toolbar">
+            <el-select
+              v-model="selectedPondId"
+              placeholder="选择鱼塘"
+              style="width: 180px"
+              @change="fetchBiomassTrend"
+            >
+              <el-option
+                v-for="pond in ponds"
+                :key="pond.id"
+                :label="`${pond.name}（${pond.fishSpecies}）`"
+                :value="pond.id"
+              />
+            </el-select>
+            <el-radio-group v-model="biomassDays" size="small" @change="fetchBiomassTrend">
+              <el-radio-button :value="7">7天</el-radio-button>
+              <el-radio-button :value="30">30天</el-radio-button>
+              <el-radio-button :value="90">90天</el-radio-button>
+              <el-radio-button :value="180">180天</el-radio-button>
+              <el-radio-button :value="365">365天</el-radio-button>
+            </el-radio-group>
+          </div>
+        </div>
+        <div v-loading="biomassLoading" class="biomass-body">
+          <BiomassTrendChart v-if="biomassTrendData" :data="biomassTrendData" />
+          <div v-else class="biomass-empty">暂无生物量数据</div>
         </div>
       </section>
     </main>
@@ -82,13 +108,20 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import TrendChart from './components/TrendChart.vue'
 import VideoPlayer from './components/VideoPlayer.vue'
+import BiomassTrendChart from './components/BiomassTrendChart.vue'
 import { getLatest, getTrend, type DeviceData } from './api/device'
+import { getPonds, getBiomassTrend, type Pond, type BiomassTrend } from './api/biomass'
 
 const loading = ref(false)
 const latestData = ref<DeviceData | null>(null)
 const trendDialogVisible = ref(false)
 const trendData = ref<DeviceData[]>([])
 const trendHours = ref(24)
+const ponds = ref<Pond[]>([])
+const selectedPondId = ref<number | null>(null)
+const biomassDays = ref(30)
+const biomassTrendData = ref<BiomassTrend | null>(null)
+const biomassLoading = ref(false)
 
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 
@@ -115,9 +148,35 @@ function openTrend() {
   fetchTrend()
 }
 
+async function fetchPonds() {
+  try {
+    const res = await getPonds()
+    ponds.value = res.data.data
+    if (ponds.value.length && selectedPondId.value == null) {
+      selectedPondId.value = ponds.value[0].id
+      await fetchBiomassTrend()
+    }
+  } catch {
+    ElMessage.error('获取鱼塘列表失败')
+  }
+}
+
+async function fetchBiomassTrend() {
+  if (selectedPondId.value == null) return
+  biomassLoading.value = true
+  try {
+    const res = await getBiomassTrend(selectedPondId.value, biomassDays.value)
+    biomassTrendData.value = res.data.data
+  } catch {
+    ElMessage.error('获取生物量趋势失败')
+  } finally {
+    biomassLoading.value = false
+  }
+}
+
 onMounted(() => {
   loading.value = true
-  fetchLatest().finally(() => { loading.value = false })
+  Promise.all([fetchLatest(), fetchPonds()]).finally(() => { loading.value = false })
   refreshTimer = setInterval(fetchLatest, 60_000)
 })
 
@@ -250,6 +309,49 @@ html, body, #app {
 
 .placeholder-box.large {
   min-height: 320px;
+}
+
+.biomass-section {
+  margin-bottom: 20px;
+  padding: 20px 24px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.biomass-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.biomass-header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.biomass-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.biomass-body {
+  min-height: 760px;
+}
+
+.biomass-empty {
+  min-height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  font-size: 14px;
 }
 
 .trend-overlay {
