@@ -1,0 +1,216 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600;700&family=Sora:wght@500;600;700&display=swap');
+
+:root {
+  /* Pond-depth palette */
+  --app-bg: #0a1520;
+  --app-bg-gradient: radial-gradient(ellipse 80% 50% at 50% -20%, #142a42 0%, transparent 70%);
+  --panel-bg: #111e2c;
+  --panel-elevated: #162636;
+  --border-color: #243b52;
+  --border-subtle: #1a2d40;
+
+  --text-primary: #d8e8f4;
+  --text-secondary: #6b8cae;
+  --text-muted: #4a6580;
+
+  /* Sensor semantics */
+  --color-dox: #56b4e9;
+  --color-ph: #5bc8a8;
+  --color-thw: #f0b429;
+
+  --color-dox-dim: rgba(86, 180, 233, 0.12);
+  --color-ph-dim: rgba(91, 200, 168, 0.12);
+  --color-thw-dim: rgba(240, 180, 41, 0.12);
+
+  --pond-1: #56b4e9;
+  --pond-2: #5bc8a8;
+  --pond-3: #f0b429;
+
+  /* Waterline signature gradient */
+  --waterline: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-dox) 20%,
+    var(--color-ph) 50%,
+    var(--color-thw) 80%,
+    transparent 100%
+  );
+
+  /* Typography */
+  --font-display: 'Sora', 'Noto Sans SC', sans-serif;
+  --font-body: 'Noto Sans SC', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Noto Sans SC', monospace;
+
+  /* Layout */
+  --content-max: 1600px;
+  --sidebar-width: 320px;
+  --panel-radius: 10px;
+  --panel-padding: 20px;
+  --section-gap: 12px;
+  --header-height: 52px;
+
+  /* Chart tokens */
+  --chart-axis: #4a6580;
+  --chart-grid: #1a2d40;
+  --chart-text: #d8e8f4;
+
+  /* Element Plus overrides */
+  --el-bg-color: var(--panel-bg);
+  --el-bg-color-overlay: var(--panel-elevated);
+  --el-border-color: var(--border-color);
+  --el-border-color-light: var(--border-subtle);
+  --el-text-color-primary: var(--text-primary);
+  --el-text-color-regular: var(--text-secondary);
+  --el-color-primary: var(--color-dox);
+  --el-fill-color-blank: var(--panel-bg);
+}
+
+html, body, #app {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--app-bg);
+  background-image: var(--app-bg-gradient);
+  background-attachment: fixed;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Shared panel */
+.panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--panel-radius);
+  overflow: hidden;
+}
+
+.panel--padded {
+  padding: var(--panel-padding);
+}
+
+/* Section header pattern */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.section-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+}
+
+.section-title__sub {
+  display: block;
+  margin-top: 4px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  letter-spacing: 0;
+}
+
+.section-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Empty state */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 100%;
+  min-height: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.empty-state__hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Module placeholder */
+.module-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel-bg);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--panel-radius);
+  color: var(--text-muted);
+  font-size: 13px;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.module-placeholder--tall {
+  min-height: 0;
+}
+
+/* Live badge */
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: rgba(91, 200, 168, 0.1);
+  border: 1px solid rgba(91, 200, 168, 0.25);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-ph);
+}
+
+.live-badge__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-ph);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-badge__dot {
+    animation: none;
+  }
+}
+
+/* Small screens: allow page scroll when layout stacks vertically.
+   Must live in global CSS — App.vue scoped styles cannot target html/body. */
+@media (max-width: 1100px) {
+  html, body, #app {
+    height: auto;
+    min-height: 100vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}

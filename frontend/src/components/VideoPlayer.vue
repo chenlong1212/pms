@@ -1,117 +1,65 @@
 <template>
-  <section class="video-section" v-loading="loading">
+  <section class="video-section panel" :class="{ 'video-section--compact': compact }">
     <div class="video-header">
       <span class="video-title">实时监控</span>
+      <span v-if="streamUrl" class="live-badge">
+        <span class="live-badge__dot" />
+        直播中
+      </span>
     </div>
 
-    <div class="video-container">
-      <video
-        ref="videoRef"
-        class="video-player"
-        controls
-        playsinline
-        autoplay
-        muted
+    <div class="video-layout" v-loading="pageLoading">
+      <VideoStream
+        v-for="slot in videoSlots"
+        :key="slot.label"
+        :url="streamUrl"
+        :label="slot.label"
       />
-      <div v-if="!streamUrl && !loading" class="video-placeholder">
-        <span>未配置视频流地址</span>
-      </div>
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
-import Hls from 'hls.js'
+import { ref, onMounted } from 'vue'
 import { getVideoStreamUrl } from '../api/video'
+import VideoStream from './VideoStream.vue'
 
-const videoRef = ref<HTMLVideoElement>()
+defineProps<{
+  compact?: boolean
+}>()
+
 const streamUrl = ref('')
-const loading = ref(false)
+const pageLoading = ref(false)
 
-let hls: Hls | null = null
-
-function cleanup() {
-  if (hls) {
-    hls.destroy()
-    hls = null
-  }
-  const video = videoRef.value
-  if (video) {
-    video.pause()
-    video.removeAttribute('src')
-    video.load()
-  }
-}
-
-function startPlay() {
-  if (!streamUrl.value || !videoRef.value) return
-
-  loading.value = true
-  const video = videoRef.value
-
-  if (Hls.isSupported()) {
-    hls = new Hls({
-      enableWorker: true,
-      lowLatencyMode: false,
-    })
-    hls.loadSource(streamUrl.value)
-    hls.attachMedia(video)
-    hls.on(Hls.Events.MANIFEST_PARSED, () => {
-      loading.value = false
-      video.play().catch(() => {
-        loading.value = false
-      })
-    })
-    hls.on(Hls.Events.ERROR, (_, data) => {
-      if (data.fatal) {
-        loading.value = false
-        cleanup()
-      }
-    })
-  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-    video.src = streamUrl.value
-    video.addEventListener('loadedmetadata', () => {
-      loading.value = false
-      video.play().catch(() => {
-        loading.value = false
-      })
-    }, { once: true })
-  } else {
-    loading.value = false
-  }
-}
-
-function handlePageExit() {
-  cleanup()
-}
+const videoSlots = [
+  { label: '主画面' },
+  { label: '监控 1' },
+  { label: '监控 2' },
+]
 
 onMounted(async () => {
+  pageLoading.value = true
   try {
     const res = await getVideoStreamUrl()
     streamUrl.value = res.data.data ?? ''
-    if (streamUrl.value) {
-      startPlay()
-    }
   } catch {
     streamUrl.value = ''
+  } finally {
+    pageLoading.value = false
   }
-  window.addEventListener('beforeunload', handlePageExit)
-  window.addEventListener('pagehide', handlePageExit)
-})
-
-onBeforeUnmount(() => {
-  cleanup()
-  window.removeEventListener('beforeunload', handlePageExit)
-  window.removeEventListener('pagehide', handlePageExit)
 })
 </script>
 
 <style scoped>
 .video-section {
-  background: var(--panel-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.video-section--compact {
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -119,37 +67,30 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
 }
 
 .video-title {
-  font-size: 14px;
-  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
-.video-container {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  background: #000;
-}
-
-.video-player {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
-}
-
-.video-placeholder {
-  position: absolute;
-  inset: 0;
+.video-layout {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-secondary);
-  font-size: 14px;
-  pointer-events: none;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.video-layout > :deep(.video-stream) {
+  flex: 1;
+  min-height: 0;
 }
 </style>

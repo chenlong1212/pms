@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.pms.mapper.FeedingRecordMapper">
+
+    <resultMap id="BaseResultMap" type="com.pms.entity.FeedingRecord">
+        <id column="id" property="id"/>
+        <result column="pond_id" property="pondId"/>
+        <result column="feed_date" property="feedDate"/>
+        <result column="feed_total_kg" property="feedTotalKg"/>
+        <result column="remark" property="remark"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO feeding_record (pond_id, feed_date, feed_total_kg, remark, created_at, updated_at)
+        VALUES (#{pondId}, #{feedDate}, #{feedTotalKg}, #{remark}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <update id="update">
+        UPDATE feeding_record
+        SET feed_date = #{feedDate},
+            feed_total_kg = #{feedTotalKg},
+            remark = #{remark},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM feeding_record WHERE id = #{id}
+    </delete>
+
+    <select id="findById" resultMap="BaseResultMap">
+        SELECT id, pond_id, feed_date, feed_total_kg, remark, created_at, updated_at
+        FROM feeding_record
+        WHERE id = #{id}
+    </select>
+
+    <select id="findByPondAndDate" resultMap="BaseResultMap">
+        SELECT id, pond_id, feed_date, feed_total_kg, remark, created_at, updated_at
+        FROM feeding_record
+        WHERE pond_id = #{pondId}
+          AND feed_date = #{feedDate}
+        LIMIT 1
+    </select>
+
+    <select id="findByPondId" resultMap="BaseResultMap">
+        SELECT id, pond_id, feed_date, feed_total_kg, remark, created_at, updated_at
+        FROM feeding_record
+        WHERE pond_id = #{pondId}
+        ORDER BY feed_date DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countByPondId" resultType="long">
+        SELECT COUNT(*)
+        FROM feeding_record
+        WHERE pond_id = #{pondId}
+    </select>
+
+</mapper>

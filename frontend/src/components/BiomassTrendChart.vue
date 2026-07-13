@@ -1,8 +1,8 @@
 <template>
   <div class="biomass-charts">
-    <div ref="countChartRef" class="chart-panel"></div>
-    <div ref="avgWeightChartRef" class="chart-panel"></div>
-    <div ref="biomassChartRef" class="chart-panel"></div>
+    <div ref="countChartRef" class="chart-panel panel"></div>
+    <div ref="avgWeightChartRef" class="chart-panel panel"></div>
+    <div ref="biomassChartRef" class="chart-panel panel"></div>
   </div>
 </template>
 
@@ -24,50 +24,53 @@ let avgWeightChart: echarts.ECharts | null = null
 let biomassChart: echarts.ECharts | null = null
 
 const POND_COLORS: Record<number, string> = {
-  1: '#58a6ff',
-  2: '#3fb950',
-  3: '#d29922',
+  1: '#56b4e9',
+  2: '#5bc8a8',
+  3: '#f0b429',
 }
 
-function getColor() {
+function chartColor() {
   if (props.color) return props.color
-  if (props.data?.pondId) return POND_COLORS[props.data.pondId] ?? '#58a6ff'
-  return '#58a6ff'
+  if (props.data?.pondId) return POND_COLORS[props.data.pondId] ?? '#56b4e9'
+  return '#56b4e9'
 }
 
 function buildLineOption(title: string, yName: string, seriesName: string, data: (number | string)[]) {
-  const color = getColor()
+  const color = chartColor()
   return {
     backgroundColor: 'transparent',
     title: {
       text: title,
-      left: 0,
-      top: 0,
-      textStyle: { color: '#e6edf3', fontSize: 14, fontWeight: 600 },
+      left: 12,
+      top: 8,
+      textStyle: { color: '#d8e8f4', fontSize: 12, fontWeight: 600, fontFamily: 'Sora, Noto Sans SC, sans-serif' },
     },
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'cross' },
+      backgroundColor: '#162636',
+      borderColor: '#243b52',
+      textStyle: { color: '#d8e8f4' },
     },
     grid: {
       left: '3%',
       right: '4%',
-      bottom: '12%',
-      top: 36,
+      bottom: '18%',
+      top: 28,
       containLabel: true,
     },
     xAxis: {
       type: 'category',
       data: props.data?.dates ?? [],
-      axisLabel: { rotate: 45, fontSize: 11, color: '#8b949e' },
-      axisLine: { lineStyle: { color: '#30363d' } },
+      axisLabel: { rotate: 45, fontSize: 9, color: '#4a6580' },
+      axisLine: { lineStyle: { color: '#243b52' } },
     },
     yAxis: {
       type: 'value',
       name: yName,
-      nameTextStyle: { color: '#8b949e' },
-      axisLabel: { color: '#8b949e' },
-      splitLine: { lineStyle: { color: '#21262d' } },
+      nameTextStyle: { color: '#6b8cae', fontSize: 11 },
+      axisLabel: { color: '#4a6580', fontSize: 10 },
+      splitLine: { lineStyle: { color: '#1a2d40' } },
     },
     series: [
       {
@@ -75,11 +78,13 @@ function buildLineOption(title: string, yName: string, seriesName: string, data:
         type: 'line',
         data,
         smooth: true,
+        symbol: 'circle',
+        symbolSize: 4,
         itemStyle: { color },
-        lineStyle: { color },
+        lineStyle: { color, width: 2 },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: color + '40' },
+            { offset: 0, color: color + '35' },
             { offset: 1, color: color + '05' },
           ]),
         },
@@ -96,7 +101,7 @@ function renderCharts() {
     if (!countChart) countChart = echarts.init(countChartRef.value, 'dark')
     countChart.setOption(
       buildLineOption(
-        `${props.data.fishSpecies} 数量`,
+        '数量图表',
         '尾',
         '数量 (尾)',
         props.data.count,
@@ -109,7 +114,7 @@ function renderCharts() {
     if (!avgWeightChart) avgWeightChart = echarts.init(avgWeightChartRef.value, 'dark')
     avgWeightChart.setOption(
       buildLineOption(
-        `${props.data.fishSpecies} 平均重量`,
+        '平均重量图表',
         'kg/尾',
         '平均重量 (kg/尾)',
         props.data.avgWeight,
@@ -122,7 +127,7 @@ function renderCharts() {
     if (!biomassChart) biomassChart = echarts.init(biomassChartRef.value, 'dark')
     biomassChart.setOption(
       buildLineOption(
-        `${props.data.fishSpecies} 生物量`,
+        '生物量图表',
         'kg',
         '生物量 (kg)',
         props.data.biomass,
@@ -163,15 +168,34 @@ onUnmounted(() => {
 
 <style scoped>
 .biomass-charts {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
   height: 100%;
-  min-height: 720px;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .chart-panel {
-  flex: 1;
-  min-height: 200px;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+@media (max-width: 900px) {
+  .biomass-charts {
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+    height: auto;
+    min-height: 640px;
+    overflow: visible;
+  }
+
+  .chart-panel {
+    height: 200px;
+    min-height: 200px;
+  }
 }
 </style>

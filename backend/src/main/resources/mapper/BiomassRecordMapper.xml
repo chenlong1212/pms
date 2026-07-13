@@ -14,15 +14,20 @@
     </resultMap>
 
     <select id="findTrendData" resultMap="BaseResultMap">
-        SELECT b.id, b.pond_id, b.record_date, b.biomass_kg, b.fish_count,
-               a.avg_weight_kg, b.created_at
-        FROM biomass_record b
-        INNER JOIN avg_weight_record a
-            ON b.pond_id = a.pond_id AND b.record_date = a.record_date
-        WHERE b.pond_id = #{pondId}
-          AND b.record_date &gt;= #{startDate}
-          AND b.record_date &lt;= #{endDate}
-        ORDER BY b.record_date ASC
+        SELECT id, pond_id, record_date, biomass_kg, fish_count, avg_weight_kg, created_at
+        FROM biomass_record
+        WHERE pond_id = #{pondId}
+          AND record_date &gt;= #{startDate}
+          AND record_date &lt;= #{endDate}
+        ORDER BY record_date ASC
+    </select>
+
+    <select id="findByPondAndDate" resultMap="BaseResultMap">
+        SELECT id, pond_id, record_date, biomass_kg, fish_count, avg_weight_kg, created_at
+        FROM biomass_record
+        WHERE pond_id = #{pondId}
+          AND record_date = #{recordDate}
+        LIMIT 1
     </select>
 
 </mapper>
