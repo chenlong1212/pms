@@ -439,4 +439,18 @@ onMounted(() => {
   color: var(--text-primary);
   font-size: 14px;
 }
+
+@media (max-width: 1100px) {
+  .feeding-section,
+  .feeding-section--compact {
+    height: auto;
+    min-height: 360px;
+    overflow: visible;
+  }
+
+  .feeding-body {
+    min-height: 280px;
+    overflow: auto;
+  }
+}
 </style>

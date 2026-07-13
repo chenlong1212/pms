@@ -187,7 +187,15 @@ onUnmounted(() => {
 @media (max-width: 900px) {
   .biomass-charts {
     grid-template-columns: 1fr;
-    grid-template-rows: repeat(3, 1fr);
+    grid-template-rows: none;
+    height: auto;
+    min-height: 640px;
+    overflow: visible;
+  }
+
+  .chart-panel {
+    height: 200px;
+    min-height: 200px;
   }
 }
 </style>

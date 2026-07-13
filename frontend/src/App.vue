@@ -567,12 +567,6 @@ onUnmounted(() => {
 }
 
 @media (max-width: 1100px) {
-  html, body, #app {
-    height: auto;
-    min-height: 100vh;
-    overflow: auto;
-  }
-
   .app-layout {
     height: auto;
     min-height: 100vh;
@@ -582,11 +576,18 @@ onUnmounted(() => {
   .app-body {
     flex-direction: column;
     overflow: visible;
+    height: auto;
   }
 
   .sidebar {
     width: 100%;
     min-height: 480px;
+    overflow: visible;
+  }
+
+  .sidebar-video {
+    flex: none;
+    min-height: 220px;
   }
 
   .metric-cards {
@@ -601,21 +602,43 @@ onUnmounted(() => {
 
   .main-content {
     overflow: visible;
+    height: auto;
   }
 
   .biomass-section {
     flex: none;
-    min-height: 280px;
+    min-height: 720px;
+    height: auto;
+    overflow: visible;
+  }
+
+  .biomass-body {
+    min-height: 640px;
+    overflow: visible;
   }
 
   .modules-grid {
     flex: none;
     grid-template-columns: 1fr;
-    min-height: 480px;
+    min-height: auto;
+    overflow: visible;
   }
 
   .modules-col--left {
     grid-template-rows: auto auto;
+    overflow: visible;
+  }
+
+  .modules-col--left > :first-child {
+    min-height: 360px;
+    height: auto;
+    overflow: visible;
+  }
+
+  .module-placeholder,
+  .module-placeholder--tall {
+    min-height: 160px;
+    height: auto;
   }
 }
 </style>

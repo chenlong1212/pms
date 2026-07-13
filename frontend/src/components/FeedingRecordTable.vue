@@ -76,4 +76,10 @@ onUnmounted(() => {
   height: 100%;
   min-height: 0;
 }
+
+@media (max-width: 1100px) {
+  .table-wrap {
+    min-height: 280px;
+  }
+}
 </style>
