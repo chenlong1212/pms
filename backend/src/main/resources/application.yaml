@@ -33,3 +33,10 @@ device:
 
 video:
   stream-url: https://cmgw-vpc.lechange.com:8890/LCO/7C01A28PAF00329/9/1/20241210T003832/127e645b7469407abc9f252bbd8fef22.m3u8?proto=https&source=open
+
+llm:
+  base-url: https://api.deepseek.com
+  api-key: sk-64d255c0212c43669e848a53f6a398ef
+  model: deepseek-chat
+  timeout-ms: 60000
+  max-tool-rounds: 5
