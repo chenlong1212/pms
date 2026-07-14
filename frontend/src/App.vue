@@ -84,7 +84,7 @@
             <div class="module-placeholder">待开发模块 2</div>
           </div>
           <div class="module-placeholder module-placeholder--tall">待开发模块 3</div>
-          <div class="module-placeholder module-placeholder--tall">待开发模块 1</div>
+          <ChatPanel class="module-chat" />
         </div>
       </div>
     </main>
@@ -127,6 +127,7 @@ import TrendChart from './components/TrendChart.vue'
 import VideoPlayer from './components/VideoPlayer.vue'
 import BiomassTrendChart from './components/BiomassTrendChart.vue'
 import FeedingRecordSection from './components/FeedingRecordSection.vue'
+import ChatPanel from './components/ChatPanel.vue'
 import { getLatest, getTrend, type DeviceData } from './api/device'
 import { getPonds, getBiomassTrend, type Pond, type BiomassTrend } from './api/biomass'
 import { linearPredict, parseCollectTime, formatPredictValue } from './utils/predict'
@@ -491,6 +492,12 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
+.module-chat {
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
 /* Trend modal */
 .trend-overlay {
   position: fixed;
@@ -638,6 +645,11 @@ onUnmounted(() => {
   .module-placeholder,
   .module-placeholder--tall {
     min-height: 160px;
+    height: auto;
+  }
+
+  .module-chat {
+    min-height: 420px;
     height: auto;
   }
 }
