@@ -1,6 +1,8 @@
 spring:
   application:
     name: pms-backend
+  config:
+    import: optional:classpath:application-secrets.yaml
   profiles:
     active: local
 
@@ -36,7 +38,6 @@ video:
 
 llm:
   base-url: https://api.deepseek.com
-  api-key: sk-64d255c0212c43669e848a53f6a398ef
   model: deepseek-chat
   timeout-ms: 60000
   max-tool-rounds: 5

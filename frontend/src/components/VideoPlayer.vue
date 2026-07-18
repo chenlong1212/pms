@@ -12,8 +12,9 @@
       <VideoStream
         v-for="slot in videoSlots"
         :key="slot.label"
-        :url="streamUrl"
+        :url="slot.enabled ? streamUrl : ''"
         :label="slot.label"
+        :placeholder-text="slot.enabled ? '暂无画面' : '待开发'"
       />
     </div>
   </section>
@@ -32,9 +33,9 @@ const streamUrl = ref('')
 const pageLoading = ref(false)
 
 const videoSlots = [
-  { label: '主画面' },
-  { label: '监控 1' },
-  { label: '监控 2' },
+  { label: '主画面', enabled: true },
+  { label: '监控 1', enabled: false },
+  { label: '监控 2', enabled: false },
 ]
 
 onMounted(async () => {

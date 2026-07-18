@@ -11,7 +11,7 @@
         muted
       />
       <div v-if="!url && !loading" class="video-stream__placeholder">
-        <span>暂无画面</span>
+        <span>{{ placeholderText }}</span>
       </div>
     </div>
   </div>
@@ -21,10 +21,13 @@
 import { ref, watch, onBeforeUnmount } from 'vue'
 import Hls from 'hls.js'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   url: string
   label?: string
-}>()
+  placeholderText?: string
+}>(), {
+  placeholderText: '暂无画面',
+})
 
 const videoRef = ref<HTMLVideoElement>()
 const loading = ref(false)

@@ -194,7 +194,6 @@ video:
 
 llm:
   base-url: https://api.deepseek.com
-  api-key: ...
   model: deepseek-chat
 
 spring:
@@ -204,6 +203,15 @@ spring:
     baseline-on-migrate: true
     baseline-version: 1
 ```
+
+LLM 密钥不写入受 Git 管理的配置。首次运行时复制模板并填写真实密钥：
+
+```bash
+cd backend
+cp src/main/resources/application-secrets.example.yaml src/main/resources/application-secrets.yaml
+```
+
+`src/main/resources/application-secrets.yaml` 已加入 `.gitignore`，应用启动时会自动从 classpath 加载。构建生产包前，需要在构建环境中准备该文件。
 
 ---
 
