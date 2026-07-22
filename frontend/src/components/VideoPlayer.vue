@@ -9,13 +9,23 @@
     </div>
 
     <div class="video-layout" v-loading="pageLoading">
-      <VideoStream
-        v-for="slot in videoSlots"
-        :key="slot.label"
-        :url="slot.enabled ? streamUrl : ''"
-        :label="slot.label"
-        :placeholder-text="slot.enabled ? '暂无画面' : '待开发'"
-      />
+      <template v-for="slot in videoSlots" :key="slot.label">
+        <VideoStream
+          v-if="slot.type === 'stream'"
+          :url="streamUrl"
+          :label="slot.label"
+          placeholder-text="暂无画面"
+        />
+        <div v-else class="embedded-monitor">
+          <div class="embedded-monitor__label">{{ slot.label }}</div>
+          <iframe
+            class="embedded-monitor__frame"
+            :src="slot.url"
+            :title="slot.label"
+            loading="lazy"
+          />
+        </div>
+      </template>
     </div>
   </section>
 </template>
@@ -33,9 +43,17 @@ const streamUrl = ref('')
 const pageLoading = ref(false)
 
 const videoSlots = [
-  { label: '主画面', enabled: true },
-  { label: '监控 1', enabled: false },
-  { label: '监控 2', enabled: false },
+  { label: '主画面', type: 'stream' as const },
+  {
+    label: '视频展示',
+    type: 'iframe' as const,
+    url: 'http://146.56.204.72:8005/ffia_show',
+  },
+  {
+    label: '图片轮播',
+    type: 'iframe' as const,
+    url: 'http://146.56.204.72:8005/fby_show',
+  },
 ]
 
 onMounted(async () => {
@@ -93,5 +111,32 @@ onMounted(async () => {
 .video-layout > :deep(.video-stream) {
   flex: 1;
   min-height: 0;
+}
+
+.embedded-monitor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: #050a10;
+}
+
+.embedded-monitor__label {
+  padding: 4px 8px;
+  font-size: 10px;
+  color: var(--text-muted);
+  background: var(--panel-elevated);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.embedded-monitor__frame {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  border: 0;
+  background: #050a10;
 }
 </style>

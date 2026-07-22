@@ -24,15 +24,15 @@ let avgWeightChart: echarts.ECharts | null = null
 let biomassChart: echarts.ECharts | null = null
 
 const POND_COLORS: Record<number, string> = {
-  1: '#56b4e9',
-  2: '#5bc8a8',
-  3: '#f0b429',
+  1: '#1687c5',
+  2: '#159b7b',
+  3: '#d89212',
 }
 
 function chartColor() {
   if (props.color) return props.color
-  if (props.data?.pondId) return POND_COLORS[props.data.pondId] ?? '#56b4e9'
-  return '#56b4e9'
+  if (props.data?.pondId) return POND_COLORS[props.data.pondId] ?? '#1687c5'
+  return '#1687c5'
 }
 
 function buildLineOption(title: string, yName: string, seriesName: string, data: (number | string)[]) {
@@ -43,14 +43,14 @@ function buildLineOption(title: string, yName: string, seriesName: string, data:
       text: title,
       left: 12,
       top: 8,
-      textStyle: { color: '#d8e8f4', fontSize: 12, fontWeight: 600, fontFamily: 'Sora, Noto Sans SC, sans-serif' },
+      textStyle: { color: '#183247', fontSize: 12, fontWeight: 600, fontFamily: 'Sora, Noto Sans SC, sans-serif' },
     },
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'cross' },
-      backgroundColor: '#162636',
-      borderColor: '#243b52',
-      textStyle: { color: '#d8e8f4' },
+      backgroundColor: '#ffffff',
+      borderColor: '#cddde7',
+      textStyle: { color: '#183247' },
     },
     grid: {
       left: '3%',
@@ -62,15 +62,15 @@ function buildLineOption(title: string, yName: string, seriesName: string, data:
     xAxis: {
       type: 'category',
       data: props.data?.dates ?? [],
-      axisLabel: { rotate: 45, fontSize: 9, color: '#4a6580' },
-      axisLine: { lineStyle: { color: '#243b52' } },
+      axisLabel: { rotate: 45, fontSize: 9, color: '#8095a4' },
+      axisLine: { lineStyle: { color: '#cddde7' } },
     },
     yAxis: {
       type: 'value',
       name: yName,
-      nameTextStyle: { color: '#6b8cae', fontSize: 11 },
-      axisLabel: { color: '#4a6580', fontSize: 10 },
-      splitLine: { lineStyle: { color: '#1a2d40' } },
+      nameTextStyle: { color: '#587286', fontSize: 11 },
+      axisLabel: { color: '#8095a4', fontSize: 10 },
+      splitLine: { lineStyle: { color: '#e5eef3' } },
     },
     series: [
       {
@@ -98,7 +98,7 @@ function renderCharts() {
   if (!props.data?.dates.length) return
 
   if (countChartRef.value) {
-    if (!countChart) countChart = echarts.init(countChartRef.value, 'dark')
+    if (!countChart) countChart = echarts.init(countChartRef.value)
     countChart.setOption(
       buildLineOption(
         '数量图表',
@@ -111,7 +111,7 @@ function renderCharts() {
   }
 
   if (avgWeightChartRef.value) {
-    if (!avgWeightChart) avgWeightChart = echarts.init(avgWeightChartRef.value, 'dark')
+    if (!avgWeightChart) avgWeightChart = echarts.init(avgWeightChartRef.value)
     avgWeightChart.setOption(
       buildLineOption(
         '平均重量图表',
@@ -124,7 +124,7 @@ function renderCharts() {
   }
 
   if (biomassChartRef.value) {
-    if (!biomassChart) biomassChart = echarts.init(biomassChartRef.value, 'dark')
+    if (!biomassChart) biomassChart = echarts.init(biomassChartRef.value)
     biomassChart.setOption(
       buildLineOption(
         '生物量图表',

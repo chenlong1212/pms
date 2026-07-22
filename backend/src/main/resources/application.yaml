@@ -41,3 +41,4 @@ llm:
   model: deepseek-chat
   timeout-ms: 60000
   max-tool-rounds: 5
+  max-tokens: 350

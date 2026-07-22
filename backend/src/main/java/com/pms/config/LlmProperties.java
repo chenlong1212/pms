@@ -19,4 +19,7 @@ public class LlmProperties {
     private int timeoutMs = 60_000;
 
     private int maxToolRounds = 5;
+
+    /** 单次模型响应的最大 token 数，避免运营问答过长。 */
+    private int maxTokens = 350;
 }

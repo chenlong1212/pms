@@ -19,6 +19,8 @@ const suggestions = [
   '一号塘今天建议喂多少？',
 ]
 
+const MAX_HISTORY_MESSAGES = 10
+
 async function scrollToBottom() {
   await nextTick()
   if (listRef.value) {
@@ -36,7 +38,9 @@ async function ask(text: string) {
   await scrollToBottom()
 
   try {
-    const history = messages.value.filter((m) => m.role === 'user' || m.role === 'assistant')
+    const history = messages.value
+      .filter((m) => m.role === 'user' || m.role === 'assistant')
+      .slice(-MAX_HISTORY_MESSAGES)
     const { data } = await sendChat(history)
     if (data.code !== 200 || !data.data?.content) {
       throw new Error(data.message || '问答失败')
@@ -100,6 +104,8 @@ function onSubmit() {
         v-model="input"
         type="textarea"
         :rows="2"
+        :maxlength="500"
+        show-word-limit
         resize="none"
         placeholder="例如：一号塘最近 7 天生物量怎么样？"
         :disabled="loading"

@@ -39,6 +39,7 @@ public class LlmClient {
 
         ObjectNode body = objectMapper.createObjectNode();
         body.put("model", properties.getModel());
+        body.put("max_tokens", Math.max(100, properties.getMaxTokens()));
         body.set("messages", messages);
         if (tools != null && !tools.isEmpty()) {
             body.set("tools", tools);

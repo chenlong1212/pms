@@ -24,6 +24,8 @@ import java.util.List;
 public class ChatAgentService {
 
     private static final ZoneId ZONE = ZoneId.of("Asia/Shanghai");
+    private static final int MAX_HISTORY_MESSAGES = 10;
+    private static final int MAX_MESSAGE_LENGTH = 500;
 
     private final LlmClient llmClient;
     private final ChatTools chatTools;
@@ -49,7 +51,9 @@ public class ChatAgentService {
         system.put("content", buildSystemPrompt());
         messages.add(system);
 
-        for (ChatMessageDTO msg : userMessages) {
+        int historyStart = Math.max(0, userMessages.size() - MAX_HISTORY_MESSAGES);
+        for (int i = historyStart; i < userMessages.size(); i++) {
+            ChatMessageDTO msg = userMessages.get(i);
             if (msg == null || msg.getContent() == null || msg.getContent().isBlank()) {
                 continue;
             }
@@ -57,9 +61,13 @@ public class ChatAgentService {
             if (!"user".equals(role) && !"assistant".equals(role)) {
                 continue;
             }
+            String content = msg.getContent().trim();
+            if (content.length() > MAX_MESSAGE_LENGTH) {
+                throw new IllegalArgumentException("单条消息不能超过 " + MAX_MESSAGE_LENGTH + " 字");
+            }
             ObjectNode node = objectMapper.createObjectNode();
             node.put("role", role);
-            node.put("content", msg.getContent().trim());
+            node.put("content", content);
             messages.add(node);
         }
 

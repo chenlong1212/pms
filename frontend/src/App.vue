@@ -81,7 +81,20 @@
         <div class="modules-grid">
           <div class="modules-col modules-col--left">
             <FeedingRecordSection compact />
-            <div class="module-placeholder">待开发模块 2</div>
+            <section class="system-entry panel">
+              <h2 class="system-entry__title">智能分析系统</h2>
+              <div class="system-entry__buttons">
+                <button
+                  v-for="system in externalSystems"
+                  :key="system.url"
+                  class="system-entry__button"
+                  type="button"
+                  @click="openExternalSystem(system)"
+                >
+                  {{ system.name }}
+                </button>
+              </div>
+            </section>
           </div>
           <div class="module-placeholder module-placeholder--tall">待开发模块 3</div>
           <ChatPanel class="module-chat" />
@@ -117,6 +130,28 @@
         </div>
       </transition>
     </teleport>
+
+    <teleport to="body">
+      <transition name="trend-fade">
+        <div v-if="activeSystem" class="system-window-overlay" @click.self="closeExternalSystem">
+          <section class="system-window panel" role="dialog" aria-modal="true" :aria-label="activeSystem.name">
+            <header class="system-window__header">
+              <h2 class="section-title">{{ activeSystem.name }}</h2>
+              <button class="trend-close" type="button" aria-label="关闭" @click="closeExternalSystem">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </header>
+            <iframe
+              class="system-window__frame"
+              :src="activeSystem.url"
+              :title="activeSystem.name"
+            />
+          </section>
+        </div>
+      </transition>
+    </teleport>
   </div>
 </template>
 
@@ -135,6 +170,16 @@ import { linearPredict, parseCollectTime, formatPredictValue } from './utils/pre
 const predictMinutes = [10, 30, 60] as const
 type MetricKey = 'dox' | 'ph' | 'thw'
 type PredictMap = Record<(typeof predictMinutes)[number], number | null>
+type ExternalSystem = { name: string; url: string }
+
+const externalSystems: ExternalSystem[] = [
+  { name: '金鲳鱼分析', url: 'http://146.56.204.72:8002/' },
+  { name: '智慧水产监控', url: 'http://146.56.204.72:8005/index' },
+  { name: '鱼体质量估算', url: 'http://146.56.204.72:8008/' },
+  { name: '声呐鱼类计数', url: 'http://146.56.204.72:8020/' },
+  { name: '白鱼识别', url: 'http://146.56.204.72:8017/' },
+  { name: '水产养殖系统', url: 'http://146.56.204.72:8099/' },
+]
 
 const loading = ref(false)
 const latestData = ref<DeviceData | null>(null)
@@ -147,6 +192,7 @@ const selectedPondId = ref<number | null>(null)
 const biomassDays = ref(30)
 const biomassTrendData = ref<BiomassTrend | null>(null)
 const biomassLoading = ref(false)
+const activeSystem = ref<ExternalSystem | null>(null)
 
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 
@@ -223,6 +269,18 @@ function openTrend() {
   fetchTrend()
 }
 
+function openExternalSystem(system: ExternalSystem) {
+  activeSystem.value = system
+}
+
+function closeExternalSystem() {
+  activeSystem.value = null
+}
+
+function handleKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape' && activeSystem.value) closeExternalSystem()
+}
+
 async function fetchPonds() {
   try {
     const res = await getPonds()
@@ -254,12 +312,14 @@ async function refreshData() {
 }
 
 onMounted(() => {
+  window.addEventListener('keydown', handleKeydown)
   loading.value = true
   Promise.all([refreshData(), fetchPonds()]).finally(() => { loading.value = false })
   refreshTimer = setInterval(refreshData, 60_000)
 })
 
 onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeydown)
   if (refreshTimer) clearInterval(refreshTimer)
 })
 </script>
@@ -498,12 +558,92 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
+.system-entry {
+  min-height: 0;
+  padding: 10px 12px;
+}
+
+.system-entry__title {
+  margin: 0 0 8px;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.system-entry__buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.system-entry__button {
+  min-width: 0;
+  padding: 7px 6px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--panel-elevated);
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 11px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+
+.system-entry__button:hover {
+  border-color: var(--color-dox);
+  background: var(--color-dox-dim);
+  color: var(--color-dox);
+}
+
+.system-entry__button:focus-visible {
+  outline: 2px solid var(--color-dox);
+  outline-offset: 2px;
+}
+
+.system-window-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(24, 50, 71, 0.38);
+  backdrop-filter: blur(4px);
+}
+
+.system-window {
+  width: 70vw;
+  height: 70vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.system-window__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.system-window__frame {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  border: 0;
+  background: #fff;
+}
+
 /* Trend modal */
 .trend-overlay {
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: rgba(5, 12, 20, 0.75);
+  background: rgba(24, 50, 71, 0.32);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -651,6 +791,11 @@ onUnmounted(() => {
   .module-chat {
     min-height: 420px;
     height: auto;
+  }
+
+  .system-window {
+    width: 92vw;
+    height: 82vh;
   }
 }
 </style>
