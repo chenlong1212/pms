@@ -44,7 +44,7 @@ public class ChatAgentService {
         }
     }
 
-    public String chat(List<ChatMessageDTO> userMessages) {
+    public String chat(String provider, List<ChatMessageDTO> userMessages) {
         ArrayNode messages = objectMapper.createArrayNode();
         ObjectNode system = objectMapper.createObjectNode();
         system.put("role", "system");
@@ -79,7 +79,7 @@ public class ChatAgentService {
         int maxRounds = Math.max(1, llmProperties.getMaxToolRounds());
 
         for (int round = 0; round < maxRounds; round++) {
-            JsonNode response = llmClient.chat(messages, tools);
+            JsonNode response = llmClient.chat(provider, messages, tools);
             JsonNode choice = response.path("choices").path(0);
             JsonNode message = choice.path("message");
             if (message.isMissingNode() || message.isNull()) {

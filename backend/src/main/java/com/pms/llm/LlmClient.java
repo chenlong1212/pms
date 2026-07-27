@@ -32,13 +32,11 @@ public class LlmClient {
         this.objectMapper = objectMapper;
     }
 
-    public JsonNode chat(ArrayNode messages, ArrayNode tools) {
-        if (properties.getApiKey() == null || properties.getApiKey().isBlank()) {
-            throw new IllegalStateException("未配置 llm.api-key，无法调用大模型");
-        }
+    public JsonNode chat(String providerName, ArrayNode messages, ArrayNode tools) {
+        LlmProperties.Provider provider = properties.requireProvider(providerName);
 
         ObjectNode body = objectMapper.createObjectNode();
-        body.put("model", properties.getModel());
+        body.put("model", provider.getModel());
         body.put("max_tokens", Math.max(100, properties.getMaxTokens()));
         body.set("messages", messages);
         if (tools != null && !tools.isEmpty()) {
@@ -48,9 +46,9 @@ public class LlmClient {
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(properties.getApiKey().trim());
+        headers.setBearerAuth(provider.getApiKey().trim());
 
-        String url = trimTrailingSlash(properties.getBaseUrl()) + "/v1/chat/completions";
+        String url = trimTrailingSlash(provider.getBaseUrl()) + "/chat/completions";
         try {
             ResponseEntity<String> response = llmRestTemplate.postForEntity(
                     url, new HttpEntity<>(body.toString(), headers), String.class);
@@ -68,7 +66,7 @@ public class LlmClient {
 
     private static String trimTrailingSlash(String baseUrl) {
         if (baseUrl == null || baseUrl.isBlank()) {
-            return "https://api.deepseek.com";
+            throw new IllegalStateException("未配置大模型 API 地址");
         }
         return baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
     }

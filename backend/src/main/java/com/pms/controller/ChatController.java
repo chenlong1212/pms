@@ -26,7 +26,7 @@ public class ChatController {
         Map<String, Object> result = new HashMap<>();
         try {
             List<ChatMessageDTO> messages = request != null ? request.getMessages() : List.of();
-            String answer = chatAgentService.chat(messages);
+            String answer = chatAgentService.chat(request != null ? request.getProvider() : null, messages);
             result.put("code", 200);
             result.put("data", Map.of(
                     "role", "assistant",

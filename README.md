@@ -43,7 +43,7 @@ pms/
 │       ├── java/com/pms/
 │       │   ├── controller/               # device / biomass / feeding / video / chat
 │       │   ├── service/
-│       │   ├── llm/                      # DeepSeek 工具调用助手
+│       │   ├── llm/                      # DeepSeek / Qwen 工具调用智能体
 │       │   ├── scheduler/                # 水质定时采集
 │       │   └── ...
 │       └── resources/
@@ -193,8 +193,14 @@ video:
   stream-url: https://...m3u8?...
 
 llm:
-  base-url: https://api.deepseek.com
-  model: deepseek-chat
+  default-provider: deepseek
+  providers:
+    deepseek:
+      base-url: https://api.deepseek.com/v1
+      model: deepseek-chat
+    qwen:
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      model: qwen3.7-flash
 
 spring:
   flyway:
