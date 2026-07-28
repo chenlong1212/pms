@@ -48,7 +48,7 @@ public class ChatAgentService {
         ArrayNode messages = objectMapper.createArrayNode();
         ObjectNode system = objectMapper.createObjectNode();
         system.put("role", "system");
-        system.put("content", buildSystemPrompt());
+        system.put("content", buildSystemPrompt(provider));
         messages.add(system);
 
         int historyStart = Math.max(0, userMessages.size() - MAX_HISTORY_MESSAGES);
@@ -122,8 +122,15 @@ public class ChatAgentService {
         throw new IllegalStateException("工具调用轮次过多，请简化问题后重试");
     }
 
-    private String buildSystemPrompt() {
+    private String buildSystemPrompt(String providerName) {
         String today = LocalDate.now(ZONE).toString();
-        return promptTemplate.replace("{{today}}", today);
+        LlmProperties.Provider provider = llmProperties.requireProvider(providerName);
+        String displayName = provider.getDisplayName() == null || provider.getDisplayName().isBlank()
+                ? provider.getModel()
+                : provider.getDisplayName();
+        String modelIdentity = displayName + "（" + provider.getModel() + "）";
+        return promptTemplate
+                .replace("{{today}}", today)
+                .replace("{{modelIdentity}}", modelIdentity);
     }
 }

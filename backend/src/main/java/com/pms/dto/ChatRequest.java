@@ -7,6 +7,6 @@ import java.util.List;
 
 @Data
 public class ChatRequest {
-    private String provider = "deepseek";
+    private String provider;
     private List<ChatMessageDTO> messages = new ArrayList<>();
 }

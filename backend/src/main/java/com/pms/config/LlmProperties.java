@@ -12,7 +12,7 @@ import java.util.Map;
 @ConfigurationProperties(prefix = "llm")
 public class LlmProperties {
 
-    private String defaultProvider = "deepseek";
+    private String defaultProvider = "fanli";
 
     private Map<String, Provider> providers = new LinkedHashMap<>();
 
@@ -45,5 +45,8 @@ public class LlmProperties {
         private String apiKey = "";
 
         private String model;
+
+        /** 面向用户展示的模型名称。 */
+        private String displayName;
     }
 }

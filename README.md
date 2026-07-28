@@ -198,9 +198,15 @@ llm:
     deepseek:
       base-url: https://api.deepseek.com/v1
       model: deepseek-chat
+      display-name: DeepSeek
     qwen:
       base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
       model: qwen3.7-flash
+      display-name: 千问
+    fanli:
+      base-url: https://maas-api.ai-yuanjing.com/openapi/compatible-mode/v1
+      model: fanli-vl-397b
+      display-name: 范蠡大模型
 
 spring:
   flyway:

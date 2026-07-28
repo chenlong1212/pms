@@ -12,11 +12,12 @@ const messages = ref<ChatMessage[]>([
 const input = ref('')
 const loading = ref(false)
 const listRef = ref<HTMLElement | null>(null)
-const provider = ref<ModelProvider>('deepseek')
+const provider = ref<ModelProvider>('fanli')
 
 const modelOptions: Array<{ label: string; value: ModelProvider }> = [
   { label: 'DeepSeek', value: 'deepseek' },
   { label: 'Qwen', value: 'qwen' },
+  { label: '范蠡大模型', value: 'fanli' },
 ]
 
 const suggestions = [
