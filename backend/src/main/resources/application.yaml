@@ -53,4 +53,5 @@ llm:
       display-name: 范蠡大模型
   timeout-ms: 60000
   max-tool-rounds: 5
-  max-tokens: 350
+  # 范蠡模型包含推理 token；过低会在推理结束前截断，导致正文为空。
+  max-tokens: 2500

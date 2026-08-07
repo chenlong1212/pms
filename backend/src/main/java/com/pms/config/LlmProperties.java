@@ -20,8 +20,8 @@ public class LlmProperties {
 
     private int maxToolRounds = 5;
 
-    /** 单次模型响应的最大 token 数，避免运营问答过长。 */
-    private int maxTokens = 350;
+    /** 单次响应包含模型推理 token；范蠡模型需要足够额度才能输出最终正文。 */
+    private int maxTokens = 2500;
 
     public Provider requireProvider(String requestedProvider) {
         String providerName = requestedProvider == null || requestedProvider.isBlank()

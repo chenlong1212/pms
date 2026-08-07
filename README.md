@@ -68,7 +68,7 @@ pms/
 ### 1. 准备数据库
 
 ```bash
-mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS pms_local DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql -h 127.0.0.1 -P 3306 -u root -p -e "CREATE DATABASE IF NOT EXISTS pms_local DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 ```
 
 表结构由 Flyway 在后端首次启动时自动创建，无需手跑建表脚本。
@@ -126,7 +126,7 @@ npm run dev
 1. 建库：
 
 ```cmd
-mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS pms_prod DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql -h 127.0.0.1 -P 3306 -u root -p -e "CREATE DATABASE IF NOT EXISTS pms_prod DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 ```
 
 2. 配置 Nginx：`/pms/` 指向 `C:\nginx\html\pms\`，`/api/` 反代到 `127.0.0.1:8080`
@@ -165,7 +165,7 @@ nssm restart PMS_BACKEND
 迁移历史：
 
 ```cmd
-mysql -u root -p -e "USE pms_prod; SELECT * FROM flyway_schema_history;"
+mysql -h 127.0.0.1 -P 3306 -u root -p -e "USE pms_prod; SELECT * FROM flyway_schema_history;"
 ```
 
 ---
@@ -193,7 +193,7 @@ video:
   stream-url: https://...m3u8?...
 
 llm:
-  default-provider: deepseek
+  default-provider: fanli
   providers:
     deepseek:
       base-url: https://api.deepseek.com/v1
@@ -238,6 +238,19 @@ cp src/main/resources/application-secrets.example.yaml src/main/resources/applic
 | `/api/biomass/trend` | GET | 生物量趋势 |
 | `/api/feeding/ponds` | GET | 投喂相关池塘 |
 | `/api/feeding/records` | GET/POST | 投喂记录列表 / 新增 |
+| `/api/reports/preview` | POST | 校验并预览日报/周报的数据快照 |
+| `/api/reports` | GET/POST | 历史报告列表 / 生成报告 |
+| `/api/reports/{id}` | GET | 报告详情 |
+| `/api/reports/{id}/pdf` | GET | 下载报告 PDF |
+
+### 智能生产报告
+
+首页“智能生产报告”支持按池塘生成日报或周报。系统先汇总水质、生物量和投喂数据，
+完成缺失值及合理范围校验，再将固定的数据快照交给大模型撰写报告。报告正文、快照、
+模型和生成时间会保存到 `production_report`，历史报告不会随业务数据变化而改变。
+
+生成 PDF 需要系统具备中文 TrueType 字体：macOS 默认使用 Arial Unicode，
+Windows 默认尝试微软雅黑或黑体。
 | `/api/feeding/records/{id}` | PUT/DELETE | 更新 / 删除 |
 | `/api/feeding/strategy` | GET | 投喂策略 |
 | `/api/video/stream-url` | GET | 监控流地址 |

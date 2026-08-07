@@ -96,7 +96,11 @@
               </div>
             </section>
           </div>
-          <div class="module-placeholder module-placeholder--tall">待开发模块 3</div>
+          <ProductionReportSection
+            class="module-report"
+            :ponds="ponds"
+            :selected-pond-id="selectedPondId"
+          />
           <ChatPanel class="module-chat" />
         </div>
       </div>
@@ -163,6 +167,7 @@ import VideoPlayer from './components/VideoPlayer.vue'
 import BiomassTrendChart from './components/BiomassTrendChart.vue'
 import FeedingRecordSection from './components/FeedingRecordSection.vue'
 import ChatPanel from './components/ChatPanel.vue'
+import ProductionReportSection from './components/ProductionReportSection.vue'
 import { getLatest, getTrend, type DeviceData } from './api/device'
 import { getPonds, getBiomassTrend, type Pond, type BiomassTrend } from './api/biomass'
 import { linearPredict, parseCollectTime, formatPredictValue } from './utils/predict'

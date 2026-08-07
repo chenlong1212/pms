@@ -67,4 +67,13 @@
         ORDER BY collect_time_str ASC
     </select>
 
+    <select id="findRange" resultMap="BaseResultMap">
+        SELECT id, device_id, dox, ph, thw, collect_time_str, created_at
+        FROM device_data_record
+        WHERE device_id = #{deviceId}
+          AND collect_time_str &gt;= #{startTime}
+          AND collect_time_str &lt;= #{endTime}
+        ORDER BY collect_time_str ASC
+    </select>
+
 </mapper>

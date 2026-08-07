@@ -25,4 +25,8 @@ public interface FeedingRecordMapper {
                                      @Param("limit") int limit);
 
     long countByPondId(@Param("pondId") int pondId);
+
+    List<FeedingRecord> findRange(@Param("pondId") int pondId,
+                                  @Param("startDate") String startDate,
+                                  @Param("endDate") String endDate);
 }

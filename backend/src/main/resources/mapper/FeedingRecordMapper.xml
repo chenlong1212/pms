@@ -59,4 +59,13 @@
         WHERE pond_id = #{pondId}
     </select>
 
+    <select id="findRange" resultMap="BaseResultMap">
+        SELECT id, pond_id, feed_date, feed_total_kg, remark, created_at, updated_at
+        FROM feeding_record
+        WHERE pond_id = #{pondId}
+          AND feed_date &gt;= #{startDate}
+          AND feed_date &lt;= #{endDate}
+        ORDER BY feed_date ASC
+    </select>
+
 </mapper>
