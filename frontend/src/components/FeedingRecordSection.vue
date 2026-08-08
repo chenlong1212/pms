@@ -1,9 +1,10 @@
 <template>
   <section class="feeding-section panel" :class="{ 'feeding-section--compact': compact }">
     <div class="feeding-header">
-      <h2 class="section-title">投喂记录</h2>
+      <h2 v-if="!hideTitle" class="section-title">投喂记录</h2>
       <div class="feeding-toolbar">
         <el-select
+          v-if="!hidePondSelect"
           v-model="selectedPondId"
           placeholder="选择鱼塘"
           style="width: 180px"
@@ -122,7 +123,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import FeedingRecordTable from './FeedingRecordTable.vue'
 import {
@@ -138,8 +139,12 @@ import {
   type FeedingStrategy,
 } from '../api/feeding'
 
-defineProps<{
+const props = defineProps<{
   compact?: boolean
+  ponds?: Pond[]
+  selectedPondId?: number | null
+  hidePondSelect?: boolean
+  hideTitle?: boolean
 }>()
 
 const PAGE_SIZE = 20
@@ -182,9 +187,16 @@ function disableFutureDate(date: Date) {
 
 async function fetchPonds() {
   try {
-    const res = await getPonds()
-    ponds.value = res.data.data
-    if (ponds.value.length && selectedPondId.value == null) {
+    if (props.ponds?.length) {
+      ponds.value = props.ponds
+    } else {
+      const res = await getPonds()
+      ponds.value = res.data.data
+    }
+    if (props.selectedPondId != null) {
+      selectedPondId.value = props.selectedPondId
+      await fetchRecords(true)
+    } else if (ponds.value.length && selectedPondId.value == null) {
       selectedPondId.value = ponds.value[0].id
       await fetchRecords(true)
     }
@@ -192,6 +204,18 @@ async function fetchPonds() {
     ElMessage.error('获取鱼塘列表失败')
   }
 }
+
+watch(() => props.ponds, value => {
+  if (value?.length) ponds.value = value
+}, { deep: true })
+
+watch(() => props.selectedPondId, async value => {
+  if (value != null && value !== selectedPondId.value) {
+    selectedPondId.value = value
+    cachedStrategy.value = null
+    await fetchRecords(true)
+  }
+})
 
 async function fetchRecords(reset = false) {
   if (selectedPondId.value == null) return

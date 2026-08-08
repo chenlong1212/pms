@@ -1,15 +1,50 @@
 <template>
-  <div class="app-layout">
+  <div class="app-layout" :class="{ 'theme-light': isLightTheme }">
     <header class="app-header">
+      <time class="app-header__clock">{{ currentTime }}</time>
       <h1 class="app-header__title">池塘生产管理系统</h1>
+      <button
+        class="app-header__theme"
+        type="button"
+        :aria-label="isLightTheme ? '切换为深色主题' : '切换为浅色主题'"
+        :title="isLightTheme ? '切换为深色主题' : '切换为浅色主题'"
+        @click="toggleTheme"
+      >
+        <svg v-if="isLightTheme" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42" />
+        </svg>
+        <svg v-else viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M20.2 15.2A8.4 8.4 0 0 1 8.8 3.8 8.5 8.5 0 1 0 20.2 15.2Z" />
+        </svg>
+      </button>
+      <nav class="app-header__reports" aria-label="生产报告">
+        <button type="button" @click="reportDialogRef?.openDaily()">日报</button>
+        <button type="button" @click="reportDialogRef?.openWeekly()">周报</button>
+        <button type="button" @click="reportDialogRef?.openHistory()">历史记录</button>
+      </nav>
       <div class="app-header__waterline" aria-hidden="true" />
     </header>
 
     <main v-loading="loading" class="app-body">
-      <aside class="sidebar">
-        <p class="collect-time">
-          最新采集时间：{{ latestData?.collectTimeStr ?? '暂无数据' }}
-        </p>
+      <aside class="desktop-column desktop-column--left">
+        <div class="collect-toolbar">
+          <p class="collect-time">
+            最新采集时间：{{ latestData?.collectTimeStr ?? '暂无数据' }}
+          </p>
+          <el-select
+            v-model="selectedPondId"
+            placeholder="选择池塘"
+            class="collect-toolbar__pond"
+            @change="fetchBiomassTrend"
+          >
+            <el-option
+              v-for="pond in ponds"
+              :key="pond.id"
+              :label="`${pond.name}（${pond.fishSpecies}）`"
+              :value="pond.id"
+            />
+          </el-select>
+        </div>
 
         <div class="metric-cards">
           <div
@@ -20,11 +55,22 @@
             @click="openTrend"
           >
             <div class="metric-card__current">
+              <div class="metric-card__reading">
+                <svg v-if="metric.key === 'dox'" class="metric-card__icon" viewBox="0 0 40 40" aria-hidden="true">
+                  <path d="M8 26h24M11 31h18M14 21V12a6 6 0 0 1 12 0v9M27 13h5M30 10v6" />
+                </svg>
+                <svg v-else-if="metric.key === 'ph'" class="metric-card__icon" viewBox="0 0 40 40" aria-hidden="true">
+                  <circle cx="20" cy="20" r="14" /><text x="20" y="25" text-anchor="middle">Ph</text>
+                </svg>
+                <svg v-else class="metric-card__icon" viewBox="0 0 40 40" aria-hidden="true">
+                  <path d="M17 23V9a4 4 0 0 1 8 0v14a8 8 0 1 1-8 0Z" /><path d="M21 14v14" /><circle cx="21" cy="29" r="3" />
+                </svg>
+                <span class="metric-card__value">
+                  {{ metric.value }}
+                  <span v-if="metric.unit" class="metric-card__unit">{{ metric.unit }}</span>
+                </span>
+              </div>
               <span class="metric-card__label">{{ metric.label }}</span>
-              <span class="metric-card__value" :class="metric.key">
-                {{ metric.value }}
-                <span v-if="metric.unit" class="metric-card__unit">{{ metric.unit }}</span>
-              </span>
             </div>
             <div class="metric-card__predictions">
               <div
@@ -42,27 +88,37 @@
           </div>
         </div>
 
-        <VideoPlayer class="sidebar-video" compact />
+        <section class="system-entry panel">
+          <div class="system-entry__buttons">
+            <button
+              v-for="system in externalSystems"
+              :key="system.url"
+              class="system-entry__button"
+              type="button"
+              @click="openExternalSystem(system)"
+            >
+              {{ system.name }}
+            </button>
+          </div>
+        </section>
+
+        <VideoPlayer class="module-video" compact />
       </aside>
 
-      <div class="main-content">
+      <div class="desktop-column desktop-column--center">
         <section class="biomass-section panel panel--padded">
           <div class="section-header">
-            <h2 class="section-title">生物量估计与计数</h2>
+            <h2 class="section-title biomass-title">
+              <svg viewBox="0 0 32 32" aria-hidden="true">
+                <path d="M10 10h12l2 5 3 11H5l3-11 2-5Z" />
+                <path d="M12 10a4 4 0 0 1 8 0" />
+              </svg>
+              生物量估计与计数
+            </h2>
             <div class="section-toolbar">
-              <el-select
-                v-model="selectedPondId"
-                placeholder="选择池塘"
-                style="width: 200px"
-                @change="fetchBiomassTrend"
-              >
-                <el-option
-                  v-for="pond in ponds"
-                  :key="pond.id"
-                  :label="`${pond.name}（${pond.fishSpecies}）`"
-                  :value="pond.id"
-                />
-              </el-select>
+              <el-button class="feeding-entry-button" size="small" @click="feedingPanelVisible = true">
+                投喂记录
+              </el-button>
               <el-radio-group v-model="biomassDays" size="small" @change="fetchBiomassTrend">
                 <el-radio-button :value="7">7天</el-radio-button>
                 <el-radio-button :value="30">30天</el-radio-button>
@@ -73,38 +129,28 @@
             </div>
           </div>
           <div v-loading="biomassLoading" class="biomass-body">
-            <BiomassTrendChart v-if="biomassTrendData" :data="biomassTrendData" />
+            <BiomassTrendChart v-if="biomassTrendData" :data="biomassTrendData" :light-mode="isLightTheme" />
             <div v-else class="empty-state">暂无生物量数据</div>
           </div>
         </section>
-
-        <div class="modules-grid">
-          <div class="modules-col modules-col--left">
-            <FeedingRecordSection compact />
-            <section class="system-entry panel">
-              <h2 class="system-entry__title">智能分析系统</h2>
-              <div class="system-entry__buttons">
-                <button
-                  v-for="system in externalSystems"
-                  :key="system.url"
-                  class="system-entry__button"
-                  type="button"
-                  @click="openExternalSystem(system)"
-                >
-                  {{ system.name }}
-                </button>
-              </div>
-            </section>
-          </div>
-          <ProductionReportSection
-            class="module-report"
-            :ponds="ponds"
-            :selected-pond-id="selectedPondId"
-          />
-          <ChatPanel class="module-chat" />
-        </div>
+        <PondDigitalTwin :light-mode="isLightTheme" :pond-stats="pondTwinStats" />
       </div>
+
+      <ChatPanel class="module-chat desktop-column--right" />
     </main>
+
+    <HeaderReportDialog ref="reportDialogRef" :ponds="ponds" :selected-pond-id="selectedPondId" />
+
+    <el-dialog v-model="feedingPanelVisible" title="投喂记录" width="900px" top="8vh" destroy-on-close>
+      <div class="feeding-dialog-body">
+        <FeedingRecordSection
+          :ponds="ponds"
+          :selected-pond-id="selectedPondId"
+          hide-pond-select
+          hide-title
+        />
+      </div>
+    </el-dialog>
 
     <teleport to="body">
       <transition name="trend-fade">
@@ -167,7 +213,8 @@ import VideoPlayer from './components/VideoPlayer.vue'
 import BiomassTrendChart from './components/BiomassTrendChart.vue'
 import FeedingRecordSection from './components/FeedingRecordSection.vue'
 import ChatPanel from './components/ChatPanel.vue'
-import ProductionReportSection from './components/ProductionReportSection.vue'
+import HeaderReportDialog from './components/HeaderReportDialog.vue'
+import PondDigitalTwin from './components/PondDigitalTwin.vue'
 import { getLatest, getTrend, type DeviceData } from './api/device'
 import { getPonds, getBiomassTrend, type Pond, type BiomassTrend } from './api/biomass'
 import { linearPredict, parseCollectTime, formatPredictValue } from './utils/predict'
@@ -196,10 +243,32 @@ const ponds = ref<Pond[]>([])
 const selectedPondId = ref<number | null>(null)
 const biomassDays = ref(30)
 const biomassTrendData = ref<BiomassTrend | null>(null)
+const pondBiomassById = ref<Record<number, BiomassTrend>>({})
 const biomassLoading = ref(false)
 const activeSystem = ref<ExternalSystem | null>(null)
+const currentTime = ref('')
+const reportDialogRef = ref<InstanceType<typeof HeaderReportDialog> | null>(null)
+const feedingPanelVisible = ref(false)
+const isLightTheme = ref(false)
 
 let refreshTimer: ReturnType<typeof setInterval> | null = null
+let clockTimer: ReturnType<typeof setInterval> | null = null
+
+function updateClock() {
+  const now = new Date()
+  const pad = (value: number) => String(value).padStart(2, '0')
+  currentTime.value = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
+}
+
+function applyTheme() {
+  document.documentElement.dataset.theme = isLightTheme.value ? 'light' : 'dark'
+}
+
+function toggleTheme() {
+  isLightTheme.value = !isLightTheme.value
+  localStorage.setItem('pms-theme', isLightTheme.value ? 'light' : 'dark')
+  applyTheme()
+}
 
 const metrics = computed(() => [
   {
@@ -269,6 +338,23 @@ const predictions = computed(() => ({
   thw: buildMetricPredictions('thw'),
 }))
 
+const pondTwinStats = computed(() => Array.from({ length: 6 }, (_, index) => {
+  const pond = ponds.value[index]
+  const trend = pond ? pondBiomassById.value[pond.id] : null
+  const last = <T,>(values?: T[]) => values?.length ? values[values.length - 1] : null
+  const fallbackNames = ['一号塘', '二号塘', '三号塘', '四号塘', '五号塘', '六号塘']
+  return {
+    name: pond?.name ?? fallbackNames[index],
+    available: index < 3 && Boolean(pond),
+    dox: index < 3 ? latestData.value?.dox ?? null : null,
+    ph: index < 3 ? latestData.value?.ph ?? null : null,
+    temperature: index < 3 ? latestData.value?.thw ?? null : null,
+    biomass: index < 3 ? last(trend?.biomass) : null,
+    count: index < 3 ? last(trend?.count) : null,
+    avgWeight: index < 3 ? last(trend?.avgWeight) : null,
+  }
+}))
+
 function openTrend() {
   trendDialogVisible.value = true
   fetchTrend()
@@ -294,9 +380,20 @@ async function fetchPonds() {
       selectedPondId.value = ponds.value[0].id
       await fetchBiomassTrend()
     }
+    await fetchPondTwinStats()
   } catch {
     ElMessage.error('获取鱼塘列表失败')
   }
+}
+
+async function fetchPondTwinStats() {
+  const targetPonds = ponds.value.slice(0, 3)
+  const results = await Promise.allSettled(targetPonds.map(pond => getBiomassTrend(pond.id, 30)))
+  const next: Record<number, BiomassTrend> = {}
+  results.forEach((result, index) => {
+    if (result.status === 'fulfilled') next[targetPonds[index].id] = result.value.data.data
+  })
+  pondBiomassById.value = next
 }
 
 async function fetchBiomassTrend() {
@@ -317,15 +414,20 @@ async function refreshData() {
 }
 
 onMounted(() => {
+  isLightTheme.value = localStorage.getItem('pms-theme') === 'light'
+  applyTheme()
   window.addEventListener('keydown', handleKeydown)
   loading.value = true
   Promise.all([refreshData(), fetchPonds()]).finally(() => { loading.value = false })
   refreshTimer = setInterval(refreshData, 60_000)
+  updateClock()
+  clockTimer = setInterval(updateClock, 1_000)
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
   if (refreshTimer) clearInterval(refreshTimer)
+  if (clockTimer) clearInterval(clockTimer)
 })
 </script>
 
@@ -357,6 +459,86 @@ onUnmounted(() => {
   font-weight: 600;
   letter-spacing: 0.06em;
   color: var(--text-primary);
+}
+
+.app-header__clock,
+.app-header__reports,
+.app-header__theme {
+  position: relative;
+  z-index: 5;
+}
+
+.app-header__theme {
+  position: absolute;
+  left: calc(50% + 176px);
+  top: 50%;
+  width: 28px;
+  height: 28px;
+  padding: 5px;
+  transform: translateY(-50%);
+  border: 1px solid rgba(73, 207, 224, 0.48);
+  border-radius: 50%;
+  background: rgba(5, 24, 52, 0.82);
+  color: #9ff8f0;
+  cursor: pointer;
+}
+
+.app-header__theme svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.app-header__theme:hover {
+  border-color: #35dce6;
+  color: #fff;
+}
+
+.app-header__clock {
+  color: #f0f8ff;
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  text-shadow: 0 0 10px rgba(66, 211, 232, 0.28);
+}
+
+.app-header__reports {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.app-header__reports button {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid rgba(81, 145, 197, 0.42);
+  border-radius: 4px;
+  background: rgba(9, 29, 58, 0.86);
+  color: #edf7ff;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+}
+
+.app-header__reports button:hover {
+  border-color: #34dfe9;
+  background: rgba(25, 69, 103, 0.92);
+  color: #b9fff4;
+}
+
+.app-header__reports button:focus-visible {
+  outline: 2px solid #34dfe9;
+  outline-offset: 2px;
 }
 
 .app-header__waterline {
@@ -578,7 +760,7 @@ onUnmounted(() => {
 .system-entry__buttons {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 7px;
+  gap: 3px;
 }
 
 .system-entry__button {
@@ -802,5 +984,461 @@ onUnmounted(() => {
     width: 92vw;
     height: 82vh;
   }
+}
+
+/* Desktop layout restored from layout-prototype/layout.json. */
+.app-header {
+  flex-direction: row;
+  justify-content: space-between;
+  height: var(--header-height);
+  padding: 0 16px 0 24px;
+  isolation: isolate;
+  background: linear-gradient(180deg, rgba(16, 48, 85, 0.98), rgba(4, 20, 47, 0.98));
+  border-bottom: 1px solid rgba(39, 214, 228, 0.72);
+  overflow: hidden;
+}
+
+.app-header::before,
+.app-header::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  clip-path: polygon(8% 0, 14% 74%, 25% 74%, 27% 88%, 73% 88%, 75% 74%, 86% 74%, 92% 0);
+  pointer-events: none;
+}
+
+.app-header::before {
+  z-index: 0;
+  width: min(680px, 48vw);
+  height: 52px;
+  background: linear-gradient(90deg, #238ec4, #38e6ed 50%, #238ec4);
+  filter: drop-shadow(0 0 7px rgba(43, 221, 235, 0.65));
+}
+
+.app-header::after {
+  z-index: 1;
+  width: min(672px, calc(48vw - 8px));
+  height: 48px;
+  background: linear-gradient(180deg, #173b68, #092349);
+}
+
+.app-header__title {
+  position: absolute;
+  left: 50%;
+  z-index: 3;
+  transform: translateX(-50%);
+  color: #b9fff4;
+  font-size: clamp(20px, 2vw, 27px);
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  white-space: nowrap;
+  text-shadow: 0 0 4px #20dbe4, 0 0 12px rgba(32, 219, 228, 0.8), 2px 2px 0 rgba(14, 104, 141, 0.65);
+}
+
+.app-header__waterline {
+  z-index: 4;
+  left: 0;
+  right: 0;
+  opacity: 1;
+  background: linear-gradient(90deg, transparent 2%, #16d9e7 18%, #7efff0 50%, #16d9e7 82%, transparent 98%);
+  box-shadow: 0 0 8px rgba(22, 217, 231, 0.75);
+}
+
+.app-body {
+  display: grid;
+  grid-template-columns: minmax(300px, 320px) minmax(600px, 1fr) minmax(260px, 300px);
+  gap: 8px;
+  padding: 8px;
+  overflow: hidden;
+}
+
+.desktop-column {
+  min-width: 0;
+  min-height: 0;
+}
+
+.desktop-column--left {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 224px) minmax(0, 96px);
+  grid-template-rows: minmax(0, 320fr) minmax(0, 500fr);
+  column-gap: 0;
+  row-gap: 8px;
+  overflow: hidden;
+}
+
+.desktop-column--left .collect-toolbar {
+  position: absolute;
+  z-index: 2;
+  width: 100%;
+  display: flex;
+  align-items: stretch;
+}
+
+.desktop-column--left .collect-time {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 8px 6px;
+  border-radius: 0;
+  border-width: 0 0 1px;
+  font-size: 10px;
+  white-space: nowrap;
+  background: rgba(9, 29, 56, 0.94);
+  color: var(--text-secondary);
+}
+
+.collect-toolbar__pond {
+  width: 126px;
+  flex: 0 0 126px;
+}
+
+.collect-toolbar__pond :deep(.el-select__wrapper) {
+  min-height: 35px;
+  border-radius: 0;
+}
+
+.desktop-column--left .metric-cards {
+  grid-column: 1;
+  grid-row: 1;
+  min-height: 0;
+  padding-top: 36px;
+  display: grid;
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.desktop-column--left .metric-card {
+  --metric-accent: var(--color-dox);
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 88px;
+  gap: 8px;
+  min-height: 0;
+  padding: 6px 10px 4px;
+  border: 1px solid rgba(91, 128, 164, 0.3);
+  border-radius: 10px;
+  background:
+    linear-gradient(125deg, rgba(54, 79, 112, 0.34), transparent 62%),
+    #1d2d45;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+.desktop-column--left .metric-card--ph {
+  --metric-accent: var(--color-ph);
+}
+
+.desktop-column--left .metric-card--thw {
+  --metric-accent: var(--color-thw);
+}
+
+.desktop-column--left .metric-card__current {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+}
+
+.desktop-column--left .metric-card__reading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.desktop-column--left .metric-card__icon {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  overflow: visible;
+  fill: none;
+  stroke: #3ee6ed;
+  stroke-width: 2.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 3px rgba(62, 230, 237, 0.52));
+}
+
+.desktop-column--left .metric-card__icon text {
+  fill: #f5fbff;
+  stroke: none;
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.desktop-column--left .metric-card__label {
+  margin: 0 0 0 32px;
+  color: #f5f8fc;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.desktop-column--left .metric-card__value {
+  color: #ff9d00;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: 0 0 10px rgba(255, 157, 0, 0.12);
+}
+
+.desktop-column--left .metric-card__predictions {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 0 0 9px;
+  border-top: 0;
+  border-left: 1px solid rgba(157, 184, 211, 0.17);
+}
+
+.desktop-column--left .predict-row {
+  display: flex;
+  min-width: 0;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 5px;
+  border-right: 0;
+  line-height: 1.55;
+}
+
+.desktop-column--left .predict-row:last-child {
+  border-right: 0;
+}
+
+.desktop-column--left .predict-label {
+  color: #8fa6bd;
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.desktop-column--left .predict-value {
+  color: #c6f4f4;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.desktop-column--left .metric-card--clickable:hover {
+  border-color: rgba(62, 230, 237, 0.48);
+  box-shadow: 0 0 0 1px rgba(62, 230, 237, 0.08), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+.desktop-column--center .biomass-section {
+  min-height: 0;
+  height: 100%;
+  padding: 8px 10px !important;
+}
+
+.desktop-column--center .biomass-section .section-header {
+  display: flex;
+  margin-bottom: 5px;
+}
+
+.desktop-column--center .biomass-section .section-toolbar {
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.biomass-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.biomass-title svg {
+  width: 19px;
+  height: 19px;
+  fill: #f4f8ff;
+}
+
+.desktop-column--center .biomass-body {
+  flex: 1;
+  min-height: 0;
+}
+
+.desktop-column--center {
+  display: grid;
+  grid-template-rows: 300px minmax(0, 1fr);
+  gap: 8px;
+  overflow: hidden;
+}
+
+.module-video,
+.desktop-column--right {
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow: hidden;
+}
+
+.feeding-entry-button {
+  border-color: rgba(49, 210, 224, 0.55);
+  background: rgba(18, 72, 104, 0.82);
+  color: #dffcff;
+}
+
+.feeding-dialog-body {
+  height: 62vh;
+  min-height: 460px;
+}
+
+.desktop-column--left .module-video {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.desktop-column--left .system-entry {
+  grid-column: 2;
+  grid-row: 1;
+  height: 100%;
+  display: block;
+  padding: 36px 6px 6px;
+  overflow: hidden;
+}
+
+.desktop-column--left .system-entry__buttons {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: repeat(6, minmax(0, 1fr));
+  gap: 5px;
+  height: 100%;
+  min-height: 0;
+}
+
+.desktop-column--left .system-entry__button {
+  width: 100%;
+  padding: 4px 2px;
+  font-size: 10px;
+  line-height: 1.2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  background: rgba(51, 80, 116, 0.82);
+  border-color: rgba(76, 137, 190, 0.48);
+  color: #d7e8f7;
+}
+
+:global([data-theme='light']) .app-header {
+  background: linear-gradient(180deg, rgba(226, 242, 250, 0.98), rgba(199, 226, 239, 0.98));
+  border-bottom-color: rgba(20, 158, 184, 0.68);
+}
+
+:global([data-theme='light']) .app-header::after {
+  background: linear-gradient(180deg, #e8f7fb, #c9e6f1);
+}
+
+:global([data-theme='light']) .app-header__title {
+  color: #12677d;
+  text-shadow: 0 0 8px rgba(31, 191, 203, 0.32);
+}
+
+:global([data-theme='light']) .app-header__clock {
+  color: #244d64;
+  text-shadow: none;
+}
+
+:global([data-theme='light']) .app-header__reports button,
+:global([data-theme='light']) .app-header__theme {
+  background: rgba(242, 250, 253, 0.94);
+  border-color: rgba(38, 131, 165, 0.45);
+  color: #245f78;
+}
+
+:global([data-theme='light']) .desktop-column--left .collect-time {
+  background: rgba(244, 250, 253, 0.96);
+}
+
+:global([data-theme='light']) .desktop-column--left .metric-card {
+  background: linear-gradient(125deg, rgba(213, 234, 243, 0.84), rgba(248, 252, 254, 0.98) 64%);
+  border-color: rgba(62, 128, 163, 0.28);
+}
+
+:global([data-theme='light']) .desktop-column--left .metric-card__label {
+  color: #284a60;
+}
+
+:global([data-theme='light']) .desktop-column--left .predict-value {
+  color: #176f7a;
+}
+
+:global([data-theme='light']) .desktop-column--left .system-entry__button {
+  background: rgba(218, 235, 244, 0.92);
+  border-color: rgba(47, 124, 160, 0.36);
+  color: #315b72;
+}
+
+:global([data-theme='light']) .biomass-section :deep(.chart-panel) {
+  background: rgba(247, 251, 253, 0.96);
+}
+
+.theme-light .app-header {
+  background: linear-gradient(180deg, rgba(226, 242, 250, 0.98), rgba(199, 226, 239, 0.98));
+  border-bottom-color: rgba(20, 158, 184, 0.68);
+}
+
+.theme-light .app-header::after {
+  background: linear-gradient(180deg, #e8f7fb, #c9e6f1);
+}
+
+.theme-light .app-header__title {
+  color: #12677d;
+  text-shadow: 0 0 8px rgba(31, 191, 203, 0.32);
+}
+
+.theme-light .app-header__clock {
+  color: #244d64;
+  text-shadow: none;
+}
+
+.theme-light .app-header__reports button,
+.theme-light .app-header__theme {
+  background: rgba(242, 250, 253, 0.94);
+  border-color: rgba(38, 131, 165, 0.45);
+  color: #245f78;
+}
+
+.theme-light .desktop-column--left .collect-time {
+  background: rgba(244, 250, 253, 0.96);
+}
+
+.theme-light .desktop-column--left .metric-card {
+  background: linear-gradient(125deg, rgba(213, 234, 243, 0.84), rgba(248, 252, 254, 0.98) 64%);
+  border-color: rgba(62, 128, 163, 0.28);
+}
+
+.theme-light .desktop-column--left .metric-card__label {
+  color: #284a60;
+}
+
+.theme-light .desktop-column--left .predict-value {
+  color: #176f7a;
+}
+
+.theme-light .desktop-column--left .system-entry__button {
+  background: rgba(218, 235, 244, 0.92);
+  border-color: rgba(47, 124, 160, 0.36);
+  color: #315b72;
+}
+
+.theme-light .feeding-entry-button {
+  background: rgba(236, 248, 252, 0.96);
+  border-color: rgba(35, 143, 174, 0.5);
+  color: #17657d;
+}
+
+.theme-light .feeding-entry-button:hover {
+  background: #d9f2f6;
+  border-color: #1aaec0;
+  color: #0a7182;
+}
+
+@media (max-width: 1100px) {
+  .app-layout { min-width: 1100px; height: 100vh; overflow: hidden; }
+  .app-body { height: calc(100vh - var(--header-height)); }
 }
 </style>

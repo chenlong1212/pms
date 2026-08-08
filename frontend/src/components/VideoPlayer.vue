@@ -1,13 +1,5 @@
 <template>
   <section class="video-section panel" :class="{ 'video-section--compact': compact }">
-    <div class="video-header">
-      <span class="video-title">实时监控</span>
-      <span v-if="streamUrl" class="live-badge">
-        <span class="live-badge__dot" />
-        直播中
-      </span>
-    </div>
-
     <div class="video-layout" v-loading="pageLoading">
       <template v-for="slot in videoSlots" :key="slot.label">
         <VideoStream
@@ -43,7 +35,7 @@ const streamUrl = ref('')
 const pageLoading = ref(false)
 
 const videoSlots = [
-  { label: '主画面', type: 'stream' as const },
+  { label: '', type: 'stream' as const },
   {
     label: '视频展示',
     type: 'iframe' as const,
@@ -138,5 +130,10 @@ onMounted(async () => {
   min-height: 0;
   border: 0;
   background: #050a10;
+}
+
+.video-section--compact .embedded-monitor__frame {
+  transform: scale(1.28);
+  transform-origin: center;
 }
 </style>

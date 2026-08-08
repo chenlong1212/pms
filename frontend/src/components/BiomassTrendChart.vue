@@ -1,5 +1,5 @@
 <template>
-  <div class="biomass-charts">
+  <div class="biomass-charts" :class="{ 'biomass-charts--light': lightMode }">
     <div ref="countChartRef" class="chart-panel panel"></div>
     <div ref="avgWeightChartRef" class="chart-panel panel"></div>
     <div ref="biomassChartRef" class="chart-panel panel"></div>
@@ -13,7 +13,7 @@ import type { BiomassTrend } from '../api/biomass'
 
 const props = defineProps<{
   data: BiomassTrend | null
-  color?: string
+  lightMode?: boolean
 }>()
 
 const countChartRef = ref<HTMLDivElement>()
@@ -23,54 +23,44 @@ let countChart: echarts.ECharts | null = null
 let avgWeightChart: echarts.ECharts | null = null
 let biomassChart: echarts.ECharts | null = null
 
-const POND_COLORS: Record<number, string> = {
-  1: '#1687c5',
-  2: '#159b7b',
-  3: '#d89212',
-}
-
-function chartColor() {
-  if (props.color) return props.color
-  if (props.data?.pondId) return POND_COLORS[props.data.pondId] ?? '#1687c5'
-  return '#1687c5'
-}
-
-function buildLineOption(title: string, yName: string, seriesName: string, data: (number | string)[]) {
-  const color = chartColor()
+function buildLineOption(title: string, seriesName: string, data: (number | string)[], color: string) {
+  const titleColor = props.lightMode ? '#173b55' : '#f4f8ff'
+  const axisColor = props.lightMode ? '#607d90' : '#7895b1'
+  const axisLineColor = props.lightMode ? '#7fa8bd' : '#35658d'
+  const gridColor = props.lightMode ? 'rgba(70,118,149,.16)' : 'rgba(100,155,204,.18)'
   return {
     backgroundColor: 'transparent',
     title: {
       text: title,
-      left: 12,
-      top: 8,
-      textStyle: { color: '#183247', fontSize: 12, fontWeight: 600, fontFamily: 'Sora, Noto Sans SC, sans-serif' },
+      left: 14,
+      top: 12,
+      textStyle: { color: titleColor, fontSize: 14, fontWeight: 700, fontFamily: 'Sora, Noto Sans SC, sans-serif' },
     },
     tooltip: {
       trigger: 'axis',
+      confine: true,
       axisPointer: { type: 'cross' },
-      backgroundColor: '#ffffff',
-      borderColor: '#cddde7',
-      textStyle: { color: '#183247' },
+      backgroundColor: props.lightMode ? '#f8fcff' : '#0d2545',
+      borderColor: '#2877a2',
+      textStyle: { color: props.lightMode ? '#24465d' : '#e8f5ff' },
     },
     grid: {
       left: '3%',
       right: '4%',
-      bottom: '18%',
-      top: 28,
+      bottom: '19%',
+      top: 52,
       containLabel: true,
     },
     xAxis: {
       type: 'category',
       data: props.data?.dates ?? [],
-      axisLabel: { rotate: 45, fontSize: 9, color: '#8095a4' },
-      axisLine: { lineStyle: { color: '#cddde7' } },
+      axisLabel: { rotate: 45, fontSize: 9, color: axisColor },
+      axisLine: { lineStyle: { color: axisLineColor } },
     },
     yAxis: {
       type: 'value',
-      name: yName,
-      nameTextStyle: { color: '#587286', fontSize: 11 },
-      axisLabel: { color: '#8095a4', fontSize: 10 },
-      splitLine: { lineStyle: { color: '#e5eef3' } },
+      axisLabel: { color: axisColor, fontSize: 10 },
+      splitLine: { lineStyle: { color: gridColor } },
     },
     series: [
       {
@@ -79,9 +69,9 @@ function buildLineOption(title: string, yName: string, seriesName: string, data:
         data,
         smooth: true,
         symbol: 'circle',
-        symbolSize: 4,
+        symbolSize: 6,
         itemStyle: { color },
-        lineStyle: { color, width: 2 },
+        lineStyle: { color, width: 3 },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
             { offset: 0, color: color + '35' },
@@ -101,10 +91,10 @@ function renderCharts() {
     if (!countChart) countChart = echarts.init(countChartRef.value)
     countChart.setOption(
       buildLineOption(
-        '数量图表',
-        '尾',
+        '鱼群数量趋势（尾）',
         '数量 (尾)',
         props.data.count,
+        '#ff4057',
       ),
       true,
     )
@@ -114,10 +104,10 @@ function renderCharts() {
     if (!avgWeightChart) avgWeightChart = echarts.init(avgWeightChartRef.value)
     avgWeightChart.setOption(
       buildLineOption(
-        '平均重量图表',
-        'kg/尾',
+        '平均重量趋势（kg/尾）',
         '平均重量 (kg/尾)',
         props.data.avgWeight,
+        '#38d3b2',
       ),
       true,
     )
@@ -127,10 +117,10 @@ function renderCharts() {
     if (!biomassChart) biomassChart = echarts.init(biomassChartRef.value)
     biomassChart.setOption(
       buildLineOption(
-        '生物量图表',
-        'kg',
+        '生物量趋势（kg）',
         '生物量 (kg)',
         props.data.biomass,
+        '#8f5cff',
       ),
       true,
     )
@@ -143,7 +133,7 @@ function handleResize() {
   biomassChart?.resize()
 }
 
-watch(() => props.data, async (newData) => {
+watch([() => props.data, () => props.lightMode], async ([newData]) => {
   if (newData?.dates.length) {
     await nextTick()
     renderCharts()
@@ -169,8 +159,9 @@ onUnmounted(() => {
 <style scoped>
 .biomass-charts {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: 1fr;
+  gap: 6px;
   height: 100%;
   width: 100%;
   min-height: 0;
@@ -182,6 +173,15 @@ onUnmounted(() => {
   min-height: 0;
   min-width: 0;
   overflow: hidden;
+  background: rgba(10, 24, 47, 0.92);
+  border-color: rgba(76, 116, 160, 0.28);
+  border-radius: 5px;
+  box-shadow: none;
+}
+
+.biomass-charts--light .chart-panel {
+  background: rgba(247, 251, 253, 0.96);
+  border-color: rgba(62, 128, 163, 0.25);
 }
 
 @media (max-width: 900px) {

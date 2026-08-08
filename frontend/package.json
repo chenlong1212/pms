@@ -13,9 +13,11 @@
     "echarts": "^5.5.1",
     "element-plus": "^2.7.6",
     "hls.js": "^1.6.16",
+    "three": "^0.185.1",
     "vue": "^3.4.29"
   },
   "devDependencies": {
+    "@types/three": "^0.185.4",
     "@vitejs/plugin-vue": "^5.0.5",
     "typescript": "^5.4.5",
     "vite": "^5.3.1",

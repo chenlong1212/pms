@@ -1,11 +1,11 @@
 <template>
-  <section class="report-section panel">
+  <section class="report-section panel" :class="{ 'report-section--compact': compact }">
     <div class="report-header">
       <div><h2 class="section-title">智能生产报告</h2><span>数据校验后生成，可追溯历史快照</span></div>
       <el-button size="small" @click="historyVisible = true; loadHistory()">历史报告</el-button>
     </div>
-    <div class="report-form">
-      <el-select v-model="form.pondId" placeholder="选择池塘">
+    <div class="report-form" :class="{ 'report-form--shared-pond': hidePondSelect }">
+      <el-select v-if="!hidePondSelect" v-model="form.pondId" placeholder="选择池塘">
         <el-option v-for="pond in ponds" :key="pond.id" :label="pond.name" :value="pond.id" />
       </el-select>
       <el-radio-group v-model="form.reportType" size="small">
@@ -82,7 +82,7 @@ import type { Pond } from '../api/biomass'
 import { createReport, listReports, previewReport, reportPdfUrl,
   type MetricSummary, type ProductionReport, type ReportPreview, type ReportType } from '../api/report'
 
-const props = defineProps<{ ponds: Pond[]; selectedPondId: number | null }>()
+const props = defineProps<{ ponds: Pond[]; selectedPondId: number | null; hidePondSelect?: boolean; compact?: boolean }>()
 const now = new Date()
 const todayText = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'),
   String(now.getDate()).padStart(2, '0')].join('-')
@@ -139,10 +139,12 @@ function disableFuture(date: Date) { return date.getTime() > Date.now() }
 
 <style scoped>
 .report-section{padding:18px;min-height:310px}.report-header{display:flex;justify-content:space-between;align-items:flex-start}
-.report-header>div:first-child{display:flex;align-items:baseline;gap:10px}.report-header span{color:#789;font-size:12px}
+.report-header>div:first-child{display:flex;align-items:baseline;gap:10px}.report-header span{color:var(--text-muted);font-size:12px}
 .report-form{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;margin:18px 0}.report-preview{display:grid;gap:12px}
-.quality-row{display:flex;align-items:center;gap:12px;color:#567;font-size:13px}.snapshot-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px 16px;color:#345;font-size:13px}
-.report-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}.report-meta{color:#789;font-size:13px;margin-bottom:16px}
-.report-detail pre{white-space:pre-wrap;font:inherit;line-height:1.8;color:#234;max-height:60vh;overflow:auto}.el-pagination{justify-content:center;margin-top:18px}
+.report-form--shared-pond{grid-template-columns:auto 1fr}
+.quality-row{display:flex;align-items:center;gap:12px;color:var(--text-secondary);font-size:13px}.snapshot-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px 16px;color:var(--text-primary);font-size:13px}
+.report-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}.report-meta{color:var(--text-muted);font-size:13px;margin-bottom:16px}
+.report-detail pre{white-space:pre-wrap;font:inherit;line-height:1.8;color:var(--text-primary);max-height:60vh;overflow:auto}.el-pagination{justify-content:center;margin-top:18px}
+.report-section--compact{height:100%;min-height:0;padding:9px 12px;overflow:auto}.report-section--compact .report-form{margin:8px 0}.report-section--compact .report-actions{margin-top:8px}
 @media(max-width:900px){.report-form,.snapshot-grid{grid-template-columns:1fr}}
 </style>

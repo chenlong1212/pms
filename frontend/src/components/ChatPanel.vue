@@ -226,8 +226,8 @@ function onSubmit() {
 }
 
 .chat-bubble--user .chat-bubble__content {
-  background: rgba(86, 180, 233, 0.16);
-  border: 1px solid rgba(86, 180, 233, 0.28);
+  background: rgba(25, 126, 165, 0.38);
+  border: 1px solid rgba(50, 211, 225, 0.38);
   color: var(--text-primary);
 }
 
