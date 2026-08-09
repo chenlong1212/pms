@@ -17,20 +17,22 @@
           <path d="M20.2 15.2A8.4 8.4 0 0 1 8.8 3.8 8.5 8.5 0 1 0 20.2 15.2Z" />
         </svg>
       </button>
-      <nav class="app-header__reports" aria-label="生产报告">
-        <button type="button" @click="reportDialogRef?.openDaily()">日报</button>
-        <button type="button" @click="reportDialogRef?.openWeekly()">周报</button>
-        <button type="button" @click="reportDialogRef?.openHistory()">历史记录</button>
-      </nav>
       <div class="app-header__waterline" aria-hidden="true" />
     </header>
 
-    <main v-loading="loading" class="app-body">
-      <aside class="desktop-column desktop-column--left">
+    <main v-loading="loading" class="app-body dashboard-grid">
+      <aside class="water-column">
         <div class="collect-toolbar">
           <p class="collect-time">
             最新采集时间：{{ latestData?.collectTimeStr ?? '暂无数据' }}
           </p>
+        </div>
+
+        <div class="water-section-title panel">
+          <div class="water-section-title__label">
+            <span aria-hidden="true">◆</span>
+            <strong>水质预测预警</strong>
+          </div>
           <el-select
             v-model="selectedPondId"
             placeholder="选择池塘"
@@ -71,6 +73,9 @@
                 </span>
               </div>
               <span class="metric-card__label">{{ metric.label }}</span>
+              <span class="metric-card__grade" :class="`grade--${metricGrade(metric.key, metric.value).tone}`">
+                等级：{{ metricGrade(metric.key, metric.value).label }}
+              </span>
             </div>
             <div class="metric-card__predictions">
               <div
@@ -78,79 +83,110 @@
                 :key="`${metric.key}-${min}`"
                 class="predict-row"
               >
-                <span class="predict-label">{{ min }}分钟后</span>
                 <span class="predict-value" :class="metric.key">
                   {{ formatPredictValue(predictions[metric.key][min], metric.precision) }}
                   <span v-if="metric.unit" class="predict-unit">{{ metric.unit }}</span>
                 </span>
+                <span class="predict-label">{{ predictionTimeLabel(min) }}<small>预测值</small></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="metric-card quality-assessment panel">
+            <div class="metric-card__current">
+              <span class="metric-card__label">水质综合评估</span>
+              <strong class="quality-assessment__value" :class="`grade--${currentQualityGrade.tone}`">
+                {{ currentQualityGrade.label }}
+              </strong>
+              <span class="quality-assessment__hint">基于溶解氧、pH、水温</span>
+            </div>
+            <div class="metric-card__predictions quality-assessment__predictions">
+              <div v-for="min in predictMinutes" :key="`quality-${min}`" class="predict-row">
+                <span class="predict-value" :class="`grade--${qualityPredictions[min].tone}`">{{ qualityPredictions[min].label }}</span>
+                <span class="predict-label">{{ predictionTimeLabel(min) }}<small>预测等级</small></span>
               </div>
             </div>
           </div>
         </div>
-
-        <section class="system-entry panel">
-          <div class="system-entry__buttons">
-            <button
-              v-for="system in externalSystems"
-              :key="system.url"
-              class="system-entry__button"
-              type="button"
-              @click="openExternalSystem(system)"
-            >
-              {{ system.name }}
-            </button>
-          </div>
-        </section>
-
-        <VideoPlayer class="module-video" compact />
       </aside>
 
-      <div class="desktop-column desktop-column--center">
-        <section class="biomass-section panel panel--padded">
-          <div class="section-header">
-            <h2 class="section-title biomass-title">
-              <svg viewBox="0 0 32 32" aria-hidden="true">
-                <path d="M10 10h12l2 5 3 11H5l3-11 2-5Z" />
-                <path d="M12 10a4 4 0 0 1 8 0" />
-              </svg>
-              生物量估计与计数
-            </h2>
-            <div class="section-toolbar">
-              <el-button class="feeding-entry-button" size="small" @click="feedingPanelVisible = true">
-                投喂记录
-              </el-button>
-              <el-radio-group v-model="biomassDays" size="small" @change="fetchBiomassTrend">
-                <el-radio-button :value="7">7天</el-radio-button>
-                <el-radio-button :value="30">30天</el-radio-button>
-                <el-radio-button :value="90">90天</el-radio-button>
-                <el-radio-button :value="180">180天</el-radio-button>
-                <el-radio-button :value="365">365天</el-radio-button>
-              </el-radio-group>
-            </div>
+      <section class="biomass-column biomass-section panel panel--padded">
+        <div class="section-header">
+          <h2 class="section-title biomass-title">
+            <svg viewBox="0 0 32 32" aria-hidden="true">
+              <path d="M10 10h12l2 5 3 11H5l3-11 2-5Z" />
+              <path d="M12 10a4 4 0 0 1 8 0" />
+            </svg>
+            生物量估计与计数
+          </h2>
+          <div class="biomass-day-tabs" role="group" aria-label="生物量趋势时间范围">
+            <button
+              v-for="days in [7, 30, 90, 180, 365]"
+              :key="days"
+              type="button"
+              :class="{ active: biomassDays === days }"
+              :aria-pressed="biomassDays === days"
+              @click="biomassDays = days; fetchBiomassTrend()"
+            >{{ days }}天</button>
           </div>
-          <div v-loading="biomassLoading" class="biomass-body">
-            <BiomassTrendChart v-if="biomassTrendData" :data="biomassTrendData" :light-mode="isLightTheme" />
-            <div v-else class="empty-state">暂无生物量数据</div>
-          </div>
-        </section>
-        <PondDigitalTwin :light-mode="isLightTheme" :pond-stats="pondTwinStats" />
-      </div>
+        </div>
+        <div class="feeding-strategy-row">
+          <span class="feeding-strategy-row__label">投喂策略</span>
+          <strong v-if="feedingStrategy?.available && feedingStrategy.dailyFeedKg != null">
+            建议投喂量 {{ feedingStrategy.dailyFeedKg }} kg
+          </strong>
+          <span v-else>暂无可用策略</span>
+          <small v-if="feedingStrategy?.dailyRate != null">日投喂率 {{ feedingStrategy.dailyRate }}%</small>
+        </div>
+        <div v-loading="biomassLoading" class="biomass-body">
+          <BiomassTrendChart v-if="biomassTrendData" :data="biomassTrendData" :light-mode="isLightTheme" />
+          <div v-else class="empty-state">暂无生物量数据</div>
+        </div>
+        <FeedingRecordSection
+          class="biomass-feeding-history"
+          :ponds="ponds"
+          :selected-pond-id="selectedPondId"
+          title="历史投喂记录"
+          hide-pond-select
+          hide-strategy-button
+          compact
+        />
+      </section>
 
-      <ChatPanel class="module-chat desktop-column--right" />
+      <section class="center-hub">
+        <div class="aerial-hub panel">
+          <img :src="pondAerialImage" alt="池塘养殖基地航拍实景" />
+          <section class="system-entry aerial-hub__systems">
+            <div class="system-entry__buttons">
+              <button
+                v-for="system in externalSystems"
+                :key="system.url"
+                class="system-entry__button"
+                type="button"
+                @click="openExternalSystem(system)"
+              >{{ system.name }}</button>
+            </div>
+          </section>
+        </div>
+
+        <div class="center-hub__bottom">
+          <ProductionReportSection
+            class="daily-report-module"
+            :ponds="ponds"
+            :selected-pond-id="selectedPondId"
+            hide-pond-select
+            compact
+            header-type-tabs
+          />
+          <ChatPanel class="module-chat hub-chat" />
+        </div>
+      </section>
+
+      <VideoPlayer class="module-video video-column" compact />
+
     </main>
 
     <HeaderReportDialog ref="reportDialogRef" :ponds="ponds" :selected-pond-id="selectedPondId" />
-
-    <el-dialog v-model="feedingPanelVisible" title="投喂记录" width="900px" top="8vh" destroy-on-close>
-      <div class="feeding-dialog-body">
-        <FeedingRecordSection
-          :ponds="ponds"
-          :selected-pond-id="selectedPondId"
-          hide-pond-select
-          hide-title
-        />
-      </div>
-    </el-dialog>
 
     <teleport to="body">
       <transition name="trend-fade">
@@ -214,14 +250,17 @@ import BiomassTrendChart from './components/BiomassTrendChart.vue'
 import FeedingRecordSection from './components/FeedingRecordSection.vue'
 import ChatPanel from './components/ChatPanel.vue'
 import HeaderReportDialog from './components/HeaderReportDialog.vue'
-import PondDigitalTwin from './components/PondDigitalTwin.vue'
+import ProductionReportSection from './components/ProductionReportSection.vue'
+import pondAerialImage from './assets/pond-aerial.jpg'
 import { getLatest, getTrend, type DeviceData } from './api/device'
 import { getPonds, getBiomassTrend, type Pond, type BiomassTrend } from './api/biomass'
+import { getFeedingStrategy, type FeedingStrategy } from './api/feeding'
 import { linearPredict, parseCollectTime, formatPredictValue } from './utils/predict'
 
-const predictMinutes = [10, 30, 60] as const
+const predictMinutes = [30, 60, 90, 120] as const
 type MetricKey = 'dox' | 'ph' | 'thw'
 type PredictMap = Record<(typeof predictMinutes)[number], number | null>
+type WaterGrade = { label: '优' | '中' | '差' | '--'; tone: 'good' | 'warn' | 'bad' | 'muted' }
 type ExternalSystem = { name: string; url: string }
 
 const externalSystems: ExternalSystem[] = [
@@ -243,12 +282,11 @@ const ponds = ref<Pond[]>([])
 const selectedPondId = ref<number | null>(null)
 const biomassDays = ref(30)
 const biomassTrendData = ref<BiomassTrend | null>(null)
-const pondBiomassById = ref<Record<number, BiomassTrend>>({})
 const biomassLoading = ref(false)
 const activeSystem = ref<ExternalSystem | null>(null)
 const currentTime = ref('')
 const reportDialogRef = ref<InstanceType<typeof HeaderReportDialog> | null>(null)
-const feedingPanelVisible = ref(false)
+const feedingStrategy = ref<FeedingStrategy | null>(null)
 const isLightTheme = ref(false)
 
 let refreshTimer: ReturnType<typeof setInterval> | null = null
@@ -272,6 +310,13 @@ function toggleTheme() {
 
 const metrics = computed(() => [
   {
+    key: 'thw' as const,
+    label: '水温 ℃',
+    value: latestData.value?.thw ?? '--',
+    unit: '',
+    precision: 1,
+  },
+  {
     key: 'dox' as const,
     label: '溶解氧 mg/L',
     value: latestData.value?.dox ?? '--',
@@ -285,14 +330,40 @@ const metrics = computed(() => [
     unit: '',
     precision: 2,
   },
-  {
-    key: 'thw' as const,
-    label: '水温 ℃',
-    value: latestData.value?.thw ?? '--',
-    unit: '',
-    precision: 1,
-  },
 ])
+
+function predictionTimeLabel(minutes: number) {
+  if (minutes === 90) return '1.5小时后'
+  if (minutes === 120) return '2小时后'
+  return `${minutes}分钟后`
+}
+
+function metricGrade(key: MetricKey, rawValue: number | string | null): WaterGrade {
+  if (rawValue == null || rawValue === '' || rawValue === '--') return { label: '--', tone: 'muted' }
+  const value = Number(rawValue)
+  if (!Number.isFinite(value)) return { label: '--', tone: 'muted' }
+  if (key === 'dox') {
+    if (value >= 5 && value <= 15) return { label: '优', tone: 'good' }
+    if (value >= 3) return { label: '中', tone: 'warn' }
+    return { label: '差', tone: 'bad' }
+  }
+  if (key === 'ph') {
+    if (value >= 6.5 && value <= 8.5) return { label: '优', tone: 'good' }
+    if (value >= 6 && value <= 9) return { label: '中', tone: 'warn' }
+    return { label: '差', tone: 'bad' }
+  }
+  if (value >= 18 && value <= 30) return { label: '优', tone: 'good' }
+  if (value >= 12 && value <= 34) return { label: '中', tone: 'warn' }
+  return { label: '差', tone: 'bad' }
+}
+
+function combinedWaterGrade(dox: number | null | undefined, ph: number | null | undefined, thw: number | null | undefined): WaterGrade {
+  const grades = [metricGrade('dox', dox ?? null), metricGrade('ph', ph ?? null), metricGrade('thw', thw ?? null)]
+  if (grades.some(item => item.tone === 'muted')) return { label: '--', tone: 'muted' }
+  if (grades.some(item => item.tone === 'bad')) return { label: '差', tone: 'bad' }
+  if (grades.some(item => item.tone === 'warn')) return { label: '中', tone: 'warn' }
+  return { label: '优', tone: 'good' }
+}
 
 async function fetchLatest() {
   try {
@@ -338,22 +409,10 @@ const predictions = computed(() => ({
   thw: buildMetricPredictions('thw'),
 }))
 
-const pondTwinStats = computed(() => Array.from({ length: 6 }, (_, index) => {
-  const pond = ponds.value[index]
-  const trend = pond ? pondBiomassById.value[pond.id] : null
-  const last = <T,>(values?: T[]) => values?.length ? values[values.length - 1] : null
-  const fallbackNames = ['一号塘', '二号塘', '三号塘', '四号塘', '五号塘', '六号塘']
-  return {
-    name: pond?.name ?? fallbackNames[index],
-    available: index < 3 && Boolean(pond),
-    dox: index < 3 ? latestData.value?.dox ?? null : null,
-    ph: index < 3 ? latestData.value?.ph ?? null : null,
-    temperature: index < 3 ? latestData.value?.thw ?? null : null,
-    biomass: index < 3 ? last(trend?.biomass) : null,
-    count: index < 3 ? last(trend?.count) : null,
-    avgWeight: index < 3 ? last(trend?.avgWeight) : null,
-  }
-}))
+const currentQualityGrade = computed(() => combinedWaterGrade(latestData.value?.dox, latestData.value?.ph, latestData.value?.thw))
+const qualityPredictions = computed(() => Object.fromEntries(predictMinutes.map(min => [min, combinedWaterGrade(
+  predictions.value.dox[min], predictions.value.ph[min], predictions.value.thw[min],
+)])) as Record<(typeof predictMinutes)[number], WaterGrade>)
 
 function openTrend() {
   trendDialogVisible.value = true
@@ -380,30 +439,23 @@ async function fetchPonds() {
       selectedPondId.value = ponds.value[0].id
       await fetchBiomassTrend()
     }
-    await fetchPondTwinStats()
   } catch {
     ElMessage.error('获取鱼塘列表失败')
   }
-}
-
-async function fetchPondTwinStats() {
-  const targetPonds = ponds.value.slice(0, 3)
-  const results = await Promise.allSettled(targetPonds.map(pond => getBiomassTrend(pond.id, 30)))
-  const next: Record<number, BiomassTrend> = {}
-  results.forEach((result, index) => {
-    if (result.status === 'fulfilled') next[targetPonds[index].id] = result.value.data.data
-  })
-  pondBiomassById.value = next
 }
 
 async function fetchBiomassTrend() {
   if (selectedPondId.value == null) return
   biomassLoading.value = true
   try {
-    const res = await getBiomassTrend(selectedPondId.value, biomassDays.value)
-    biomassTrendData.value = res.data.data
+    const [trendRes, strategyRes] = await Promise.all([
+      getBiomassTrend(selectedPondId.value, biomassDays.value),
+      getFeedingStrategy(selectedPondId.value),
+    ])
+    biomassTrendData.value = trendRes.data.data
+    feedingStrategy.value = strategyRes.data.data
   } catch {
-    ElMessage.error('获取生物量趋势失败')
+    ElMessage.error('获取生物量或投喂策略失败')
   } finally {
     biomassLoading.value = false
   }
@@ -1270,6 +1322,20 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
+.pond-aerial-stage {
+  min-height: 0;
+  overflow: hidden;
+  background: #07172d;
+}
+
+.pond-aerial-stage img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 48%;
+}
+
 .module-video,
 .desktop-column--right {
   min-height: 0 !important;
@@ -1440,5 +1506,380 @@ onUnmounted(() => {
 @media (max-width: 1100px) {
   .app-layout { min-width: 1100px; height: 100vh; overflow: hidden; }
   .app-body { height: calc(100vh - var(--header-height)); }
+}
+
+/* Four-column operations layout */
+.app-body.dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(210px, 16fr) minmax(280px, 21fr) minmax(500px, 47fr) minmax(190px, 16fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 8px;
+  padding: 8px;
+  overflow: hidden;
+}
+
+.water-column,
+.biomass-column,
+.center-hub,
+.video-column {
+  min-width: 0;
+  min-height: 0;
+}
+
+.water-column {
+  display: grid;
+  grid-template-rows: auto 48px minmax(0, 1fr);
+  gap: 8px;
+  overflow: hidden;
+}
+
+.water-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 14px;
+  overflow: hidden;
+  border-width: 0 0 0 4px;
+  border-color: #27eced;
+  border-radius: 0;
+  background: linear-gradient(90deg, rgba(18, 75, 99, .92), rgba(13, 54, 75, .82));
+  color: #f1f7ff;
+}
+
+.water-section-title__label { display: flex; align-items: center; gap: 8px; min-width: 0; white-space: nowrap; }
+.water-section-title span { color: #2aaaff; font-size: 9px; }
+.water-section-title strong { font-size: 15px; letter-spacing: .02em; }
+
+.water-column .collect-toolbar {
+  display: block;
+  min-width: 0;
+}
+
+.water-column .collect-time {
+  min-width: 0;
+  overflow: hidden;
+  margin: 0;
+  padding: 9px 12px;
+  border: 1px solid rgba(59, 167, 198, .38);
+  border-radius: 4px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  background: rgba(8, 35, 62, .76);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.water-column .collect-toolbar__pond {
+  width: 104px;
+  flex: 0 0 104px;
+}
+
+.water-section-title .collect-toolbar__pond :deep(.el-select__wrapper) {
+  min-height: 30px;
+  border: 1px solid rgba(54, 218, 229, .52);
+  background: rgba(5, 30, 54, .72);
+  box-shadow: none;
+}
+
+.water-column .metric-cards {
+  display: grid;
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  min-height: 0;
+}
+
+.water-column .metric-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1.04fr) minmax(0, .96fr);
+  gap: 6px;
+  min-height: 0;
+  padding: 8px;
+  overflow: hidden;
+  border: 2px solid #13dfe6;
+  border-radius: 0;
+  background: linear-gradient(145deg, rgba(11, 93, 106, .92), rgba(5, 29, 49, .96) 62%);
+  box-shadow: inset 0 0 22px rgba(21, 216, 225, .08);
+}
+
+.water-column .metric-card__current {
+  min-width: 0;
+  justify-content: center;
+  padding-left: 3px;
+}
+
+.water-column .metric-card__current > .metric-card__label { order: -1; }
+
+.water-column .metric-card__reading {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.water-column .metric-card__icon {
+  width: 19px;
+  height: 19px;
+  flex: 0 0 19px;
+  fill: none;
+  stroke: #3ee6ed;
+  stroke-width: 2.3;
+}
+
+.water-column .metric-card__icon text {
+  fill: currentColor;
+  stroke: none;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.water-column .metric-card__label {
+  margin: 0 0 8px;
+  color: var(--text-primary);
+  font-weight: 650;
+  white-space: normal;
+}
+
+.water-column .metric-card__value {
+  min-width: 0;
+  font-size: clamp(20px, 1.35vw, 24px);
+  letter-spacing: -.035em;
+  white-space: nowrap;
+}
+.water-column .metric-card__unit { display: none; }
+.water-column .metric-card__grade { margin-top: 7px; font-size: 12px; font-weight: 700; }
+.water-column .metric-card__predictions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 5px 8px;
+  min-width: 0;
+  padding: 8px 5px 6px 8px;
+  background: linear-gradient(145deg, rgba(63, 123, 151, .45), rgba(37, 77, 108, .46));
+}
+.water-column .predict-row { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 1px; min-width: 0; line-height: 1.25; }
+.water-column .predict-label { color: #afc3d2; font-size: 9px; white-space: nowrap; }
+.water-column .predict-label small { display: block; margin-top: 1px; font-size: 8px; }
+.water-column .predict-value { color: #35ecf4; font-size: 13px; font-weight: 700; }
+
+.grade--good { color: #30e8d2 !important; }
+.grade--warn { color: #ffc33b !important; }
+.grade--bad { color: #ff4d4f !important; }
+.grade--muted { color: #8fa6bd !important; }
+
+.quality-assessment__value {
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: 1;
+}
+
+.quality-assessment__hint {
+  margin-top: 8px;
+  color: #93afc2;
+  font-size: 8px;
+  line-height: 1.35;
+}
+
+.quality-assessment__predictions .predict-value { font-size: 14px; }
+
+.biomass-column {
+  height: 100%;
+  padding: 10px !important;
+}
+
+.biomass-column .section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  margin-bottom: 7px;
+}
+
+.biomass-column .biomass-title {
+  min-width: 0;
+  font-size: 13px;
+  letter-spacing: -.03em;
+  white-space: nowrap;
+}
+
+.biomass-column .biomass-title svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+}
+
+.biomass-day-tabs {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(54, 143, 191, .72);
+  border-radius: 4px;
+}
+
+.biomass-day-tabs button {
+  min-width: 0;
+  height: 27px;
+  padding: 0 2px;
+  border: 0;
+  border-right: 1px solid rgba(54, 143, 191, .5);
+  background: rgba(7, 31, 59, .76);
+  color: #9db5ca;
+  font: 600 8px/1 var(--font-body);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.biomass-day-tabs button:last-child { border-right: 0; }
+.biomass-day-tabs button:hover { color: #eafcff; background: rgba(20, 92, 119, .72); }
+.biomass-day-tabs button.active {
+  background: #19cad8;
+  color: #04283b;
+  box-shadow: inset 0 0 10px rgba(118, 255, 248, .32);
+}
+
+.theme-light .biomass-day-tabs { border-color: rgba(35, 132, 168, .5); }
+.theme-light .biomass-day-tabs button { background: #edf6fa; color: #557489; }
+.theme-light .biomass-day-tabs button.active { background: #22b9c8; color: #fff; }
+.biomass-column :deep(.biomass-charts) {
+  grid-template-columns: 1fr;
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+}
+
+.feeding-strategy-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  margin-bottom: 7px;
+  padding: 0 9px;
+  overflow: hidden;
+  border: 1px solid rgba(37, 201, 218, .38);
+  background: linear-gradient(90deg, rgba(11, 80, 98, .72), rgba(11, 37, 65, .7));
+  color: #dceaf5;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.feeding-strategy-row__label {
+  padding-right: 7px;
+  border-right: 1px solid rgba(62, 226, 234, .42);
+  color: #46e3e9;
+  font-weight: 700;
+}
+
+.feeding-strategy-row strong {
+  overflow: hidden;
+  color: #f3f8ff;
+  text-overflow: ellipsis;
+}
+
+.feeding-strategy-row small {
+  margin-left: auto;
+  color: #8fb4c9;
+  font-size: 9px;
+}
+
+.biomass-feeding-history {
+  flex: 0 0 200px !important;
+  height: 200px !important;
+  margin-top: 7px;
+  padding: 7px 8px !important;
+  border-radius: 4px;
+  background: rgba(8, 26, 50, .82);
+}
+
+.biomass-feeding-history :deep(.feeding-header) { margin-bottom: 5px; }
+.biomass-feeding-history :deep(.section-title) { font-size: 13px; }
+.biomass-feeding-history :deep(.el-button) { min-height: 26px; padding: 4px 8px; }
+
+.theme-light .feeding-strategy-row {
+  border-color: rgba(26, 150, 171, .36);
+  background: linear-gradient(90deg, rgba(202, 238, 242, .9), rgba(235, 246, 250, .92));
+  color: #36576b;
+}
+
+.theme-light .feeding-strategy-row strong { color: #173f55; }
+.theme-light .feeding-strategy-row small { color: #67879a; }
+.theme-light .biomass-feeding-history { background: rgba(242, 249, 251, .94); }
+
+.center-hub {
+  display: grid;
+  grid-template-rows: minmax(230px, 40fr) minmax(330px, 60fr);
+  gap: 8px;
+  overflow: hidden;
+}
+
+.aerial-hub {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  background: #07172d;
+}
+
+.aerial-hub > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 78%;
+}
+
+.aerial-hub__systems {
+  position: absolute;
+  z-index: 2;
+  right: 8px;
+  bottom: 8px;
+  left: 8px;
+  padding: 6px;
+  border: 1px solid rgba(78, 194, 211, .38);
+  border-radius: 5px;
+  background: rgba(5, 25, 51, .72);
+  backdrop-filter: blur(8px);
+}
+
+.aerial-hub__systems .system-entry__buttons {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.aerial-hub__systems .system-entry__button {
+  height: 38px;
+  padding: 4px;
+  border-radius: 3px;
+  white-space: normal;
+  line-height: 1.25;
+}
+
+.center-hub__bottom {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.daily-report-module,
+.hub-chat { min-height: 0; height: 100%; }
+.daily-report-module :deep(.report-header > div:first-child) { display: block; }
+.daily-report-module :deep(.report-header > div:first-child > span) { display: none; }
+.daily-report-module :deep(.report-form--shared-pond) { grid-template-columns: 1fr; }
+.daily-report-module :deep(.snapshot-grid) { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(2, auto); gap: 6px; }
+.daily-report-module :deep(.quality-row) { gap: 6px; font-size: 11px; }
+.daily-report-module :deep(.report-actions) { margin-top: 6px; }
+
+.video-column {
+  height: 100% !important;
+  overflow: hidden;
+}
+
+.theme-light .water-column .metric-card {
+  background: linear-gradient(135deg, rgba(225, 240, 247, .98), rgba(247, 251, 253, .96));
+}
+
+.theme-light .aerial-hub__systems {
+  border-color: rgba(38, 132, 161, .36);
+  background: rgba(238, 248, 251, .78);
 }
 </style>

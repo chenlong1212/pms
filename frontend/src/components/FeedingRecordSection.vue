@@ -1,7 +1,7 @@
 <template>
   <section class="feeding-section panel" :class="{ 'feeding-section--compact': compact }">
     <div class="feeding-header">
-      <h2 v-if="!hideTitle" class="section-title">投喂记录</h2>
+      <h2 v-if="!hideTitle" class="section-title">{{ title || '投喂记录' }}</h2>
       <div class="feeding-toolbar">
         <el-select
           v-if="!hidePondSelect"
@@ -18,7 +18,7 @@
           />
         </el-select>
         <el-button type="primary" size="small" @click="openCreateDialog">新增投喂</el-button>
-        <el-button size="small" @click="openStrategyDialog">投喂策略</el-button>
+        <el-button v-if="!hideStrategyButton" size="small" @click="openStrategyDialog">投喂策略</el-button>
       </div>
     </div>
 
@@ -145,6 +145,8 @@ const props = defineProps<{
   selectedPondId?: number | null
   hidePondSelect?: boolean
   hideTitle?: boolean
+  hideStrategyButton?: boolean
+  title?: string
 }>()
 
 const PAGE_SIZE = 20

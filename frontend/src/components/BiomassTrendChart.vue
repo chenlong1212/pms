@@ -28,13 +28,21 @@ function buildLineOption(title: string, seriesName: string, data: (number | stri
   const axisColor = props.lightMode ? '#607d90' : '#7895b1'
   const axisLineColor = props.lightMode ? '#7fa8bd' : '#35658d'
   const gridColor = props.lightMode ? 'rgba(70,118,149,.16)' : 'rgba(100,155,204,.18)'
+  const numericData = data.map(Number).filter(Number.isFinite)
+  const dataMin = numericData.length ? Math.min(...numericData) : 0
+  const dataMax = numericData.length ? Math.max(...numericData) : 1
+  const span = Math.max(dataMax - dataMin, Math.abs(dataMax) * 0.01, 0.01)
+  const axisPadding = span * 0.22
+  const axisMin = Math.max(0, dataMin - axisPadding)
+  const axisMax = dataMax + axisPadding
+  const labelInterval = Math.max(0, Math.ceil((props.data?.dates.length ?? 0) / 7) - 1)
   return {
     backgroundColor: 'transparent',
     title: {
       text: title,
       left: 14,
-      top: 12,
-      textStyle: { color: titleColor, fontSize: 14, fontWeight: 700, fontFamily: 'Sora, Noto Sans SC, sans-serif' },
+      top: 5,
+      textStyle: { color: titleColor, fontSize: 11, fontWeight: 700, fontFamily: 'Sora, Noto Sans SC, sans-serif' },
     },
     tooltip: {
       trigger: 'axis',
@@ -45,21 +53,33 @@ function buildLineOption(title: string, seriesName: string, data: (number | stri
       textStyle: { color: props.lightMode ? '#24465d' : '#e8f5ff' },
     },
     grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '19%',
-      top: 52,
+      left: 8,
+      right: 12,
+      bottom: 26,
+      top: 28,
       containLabel: true,
     },
     xAxis: {
       type: 'category',
       data: props.data?.dates ?? [],
-      axisLabel: { rotate: 45, fontSize: 9, color: axisColor },
+      axisLabel: { rotate: 28, interval: labelInterval, fontSize: 8, color: axisColor, hideOverlap: true },
       axisLine: { lineStyle: { color: axisLineColor } },
     },
     yAxis: {
       type: 'value',
-      axisLabel: { color: axisColor, fontSize: 10 },
+      scale: true,
+      min: axisMin,
+      max: axisMax,
+      splitNumber: 2,
+      axisLabel: {
+        color: axisColor,
+        fontSize: 9,
+        formatter: (value: number) => {
+          if (Math.abs(value) >= 1000) return Math.round(value).toLocaleString()
+          if (Math.abs(value) >= 10) return value.toFixed(0)
+          return value.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')
+        },
+      },
       splitLine: { lineStyle: { color: gridColor } },
     },
     series: [
@@ -161,7 +181,7 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-template-rows: 1fr;
-  gap: 6px;
+  gap: 4px;
   height: 100%;
   width: 100%;
   min-height: 0;

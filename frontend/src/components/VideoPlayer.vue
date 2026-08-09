@@ -46,6 +46,11 @@ const videoSlots = [
     type: 'iframe' as const,
     url: 'http://146.56.204.72:8005/fby_show',
   },
+  {
+    label: '音频预测',
+    type: 'iframe' as const,
+    url: 'http://146.56.204.72:8005/ffia_predict_audio',
+  },
 ]
 
 onMounted(async () => {
@@ -132,8 +137,5 @@ onMounted(async () => {
   background: #050a10;
 }
 
-.video-section--compact .embedded-monitor__frame {
-  transform: scale(1.28);
-  transform-origin: center;
-}
+.video-section--compact .embedded-monitor__frame { transform: none; }
 </style>
