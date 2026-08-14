@@ -1,0 +1,126 @@
+﻿服务器项目开发与运维手册
+更新时间：2026-07-21
+服务器地址：146.56.204.72
+
+一、统一约定
+
+1. 所有业务项目代码均已迁移到 C:\Projects 目录统一管理。
+2. 迁移前的桌面及 C 盘旧项目目录均已删除，当前服务只使用 C:\Projects 中的项目。
+3. 服务统一由 NSSM 托管并设置为开机自动启动；部分前端由 Nginx 提供。
+4. 公共 Nginx 配置属于服务器基础设施，仍位于 C:\nginx，不属于旧项目副本。
+5. NSSM 通用命令：
+   启动：nssm start 服务名
+   停止：nssm stop 服务名
+   重启：nssm restart 服务名
+   状态：nssm status 服务名
+
+二、项目与访问地址
+
+（一）PMS 系统（8001、8080）
+项目目录：C:\Projects\pms
+前端地址：http://146.56.204.72:8001/pms/
+API 网关：http://146.56.204.72:8001/api/**
+代理关系：8001 的 /api/ 转发到 127.0.0.1:8080
+后端服务名：PMS_BACKEND
+后端目录：C:\Projects\pms\backend
+启动程序：C:\Java\jdk-17.0.12\bin\java.exe
+启动参数：-jar pms-backend-1.0.0.jar --spring.profiles.active=prod
+公共 Nginx 配置：C:\nginx\conf\nginx.conf
+日志：C:\Projects\pms\backend\logs\stdout.log、stderr.log
+技术栈：Java 17、Spring Boot、Nginx
+
+（二）金鲳鱼智能分析系统（8002）
+项目目录：C:\Projects\jinchangyu
+服务名：jinchangyu
+访问界面：http://146.56.204.72:8002/
+启动程序：C:\software\Anaconda3\envs\jinchang\python.exe -u app.py
+日志：C:\Projects\jinchangyu\service.log、service-error.log
+技术栈：Python 3.8、Flask、PyTorch、TorchVision、Ultralytics YOLO、OpenCV、Pillow、Chart.js、HTML/CSS/JavaScript
+
+（三）明光系统嵌入（8005）
+项目目录：C:\Projects\mgxt
+服务名：mgxt
+首页：http://146.56.204.72:8005/index
+视频展示：http://146.56.204.72:8005/ffia_show
+图片轮播：http://146.56.204.72:8005/fby_show
+视频摄食强度监测：http://146.56.204.72:8005/ffia_predict_video
+音频摄食强度预测：http://146.56.204.72:8005/ffia_predict_audio
+启动程序：C:\software\Anaconda3\python.exe -u app.py
+日志：C:\Projects\mgxt\service.log
+技术栈：Python、Flask、Jinja2、Werkzeug、HTML/CSS/JavaScript
+
+（四）鱼体质量估算系统（8008）
+项目目录：C:\Projects\fish-mass
+服务名：FISH_MASS_8008
+访问界面：http://146.56.204.72:8008/
+健康检查：http://146.56.204.72:8008/health
+业务接口：POST /predict、POST /fish-mass/estimate
+启动程序：C:\software\Anaconda3\envs\py37\python.exe -u app.py
+日志：C:\Projects\fish-mass\service.log、service-error.log
+技术栈：Python 3.7、Flask、TensorFlow/Keras、OpenCV、NumPy、scikit-learn、HTML/CSS/JavaScript
+
+（五）白鱼识别系统（8017 前端、8018 后端）
+项目目录：C:\Projects\whitefish
+前端服务名：WHITEFISH_FRONT_8017
+后端服务名：WHITEFISH_BACKEND_8018
+访问界面：http://146.56.204.72:8017/
+前端 API：http://146.56.204.72:8017/api/（转发到 127.0.0.1:8018）
+后端入口：http://146.56.204.72:8018/（跳转登录页）
+主要接口：POST /upload5、GET /download、POST /upload_image、/tmp/*
+前端目录：C:\Projects\whitefish\front-end
+后端目录：C:\Projects\whitefish\back-end
+后端 Python：C:\software\Anaconda3\envs\yolov8_whitefish\python.exe
+技术栈：Vue、Nginx、Python、Flask、PyTorch/YOLO、OpenCV
+
+（六）声呐鱼类计数系统（8020 前端、8021 后端）
+项目目录：C:\Projects\sonar-fish-count
+前端服务名：SONAR_FRONT_8020
+后端服务名：SONAR_BACKEND_8021
+访问界面：http://146.56.204.72:8020/
+前端 API：http://146.56.204.72:8020/api/（转发到 127.0.0.1:8021）
+后端入口：http://146.56.204.72:8021/（跳转登录页）
+主要接口：POST /upload5、GET /download、POST /upload_image、/tmp/*
+前端目录：C:\Projects\sonar-fish-count\front-end
+后端目录：C:\Projects\sonar-fish-count\back-end
+后端 Python：C:\software\Anaconda3\envs\yolov8_whitefish\python.exe
+技术栈：Vue、Nginx、Python、Flask、PyTorch/YOLO、OpenCV
+
+（七）水质模型 API（8077）
+项目目录：C:\Projects\water-model-api
+服务名：WATER_MODEL_8077
+界面说明：仅提供 API，无图形化页面。
+预测接口：POST http://146.56.204.72:8077/api/wpre
+预警接口：POST http://146.56.204.72:8077/api/wwarn
+启动程序：C:\Projects\water-model-api\water_model\Scripts\python.exe -u app_m.py
+日志：C:\Projects\water-model-api\service.log、service-error.log
+技术栈：Python、Flask、TensorFlow/Keras、pandas、joblib
+
+（八）水产养殖系统（8089—8099）
+项目根目录：C:\Projects\water-system
+后端目录：C:\Projects\water-system\back
+前端目录：C:\Projects\water-system\front
+
+8089 FISH_ACTIVITY：鱼类活跃度；http://146.56.204.72:8089/；接口 /fish_activity；Flask、视频处理
+8090 SHRIMP_ACTIVITY：虾类活动检测；http://146.56.204.72:8090/；接口 /SHRIMP_ACTIVITY；Flask、YOLO、OpenCV
+8091 CRAB_MASS：蟹质量预测；http://146.56.204.72:8091/api/CRAB_MASS；Flask、Joblib、Pandas、NumPy、PyTorch
+8092 FISH_TRACK：目标跟踪；http://146.56.204.72:8092/track；Flask、Waitress、FFmpeg
+8093 FISH_COUNT：鱼类计数；http://146.56.204.72:8093/fish_count；Flask、CenterNet、OpenCV、NumPy
+8094 CLASSIFY：鱼类分类；http://146.56.204.72:8094/api/CLASSIFY；Flask、图像分类模型
+8095 OXYGEN：溶氧预测；http://146.56.204.72:8095/api/predict_OXYGEN；Flask、TensorFlow/Keras、Pandas、scikit-learn
+8096 FISH_ACTION：鱼类行为识别；http://146.56.204.72:8096/api/predict_ACTION；Flask、PyTorch、MMAction2、OpenCV
+8097 COLOR：颜色检测；http://146.56.204.72:8097/api/predict_COLOR；Flask、Ultralytics YOLO、Pillow、Matplotlib
+8098 FFIA：摄食强度音频分析；http://146.56.204.72:8098/api/predict_FFIA；Flask、PyTorch、TorchAudio、SoundFile
+8099 WATER_FRONT_8099：系统前端；http://146.56.204.72:8099/；Vue 3、Vite、Vue Router、Axios、Chart.js、Nginx
+
+服务名：FISH_ACTIVITY、SHRIMP_ACTIVITY、CRAB_MASS、FISH_TRACK、FISH_COUNT、CLASSIFY、OXYGEN、FISH_ACTION、COLOR、FFIA、WATER_FRONT_8099
+
+三、迁移状态
+
+上述业务项目已统一放置于 C:\Projects。迁移前的以下旧目录已经删除：
+C:\Users\Administrator\Desktop\FishMassEstimation_Demo
+C:\Whitefish_Project
+C:\sonar_fish_count
+C:\Users\Administrator\Desktop\model_API
+以及此前已完成迁移的桌面旧项目目录。
+
+当前运行与维护应只使用 C:\Projects 中的项目，不要再在桌面或其他旧路径创建运行副本。

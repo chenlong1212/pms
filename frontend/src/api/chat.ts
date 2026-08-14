@@ -10,6 +10,8 @@ export interface ChatReply {
   content: string
 }
 
-export function sendChat(messages: ChatMessage[]) {
-  return api.post<ApiResponse<ChatReply>>('/chat', { messages }, { timeout: 90_000 })
+export type ModelProvider = 'deepseek' | 'qwen' | 'fanli'
+
+export function sendChat(provider: ModelProvider, messages: ChatMessage[]) {
+  return api.post<ApiResponse<ChatReply>>('/chat', { provider, messages }, { timeout: 90_000 })
 }

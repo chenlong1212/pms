@@ -24,6 +24,8 @@ import java.util.List;
 public class ChatAgentService {
 
     private static final ZoneId ZONE = ZoneId.of("Asia/Shanghai");
+    private static final int MAX_HISTORY_MESSAGES = 10;
+    private static final int MAX_MESSAGE_LENGTH = 500;
 
     private final LlmClient llmClient;
     private final ChatTools chatTools;
@@ -42,14 +44,16 @@ public class ChatAgentService {
         }
     }
 
-    public String chat(List<ChatMessageDTO> userMessages) {
+    public String chat(String provider, List<ChatMessageDTO> userMessages) {
         ArrayNode messages = objectMapper.createArrayNode();
         ObjectNode system = objectMapper.createObjectNode();
         system.put("role", "system");
-        system.put("content", buildSystemPrompt());
+        system.put("content", buildSystemPrompt(provider));
         messages.add(system);
 
-        for (ChatMessageDTO msg : userMessages) {
+        int historyStart = Math.max(0, userMessages.size() - MAX_HISTORY_MESSAGES);
+        for (int i = historyStart; i < userMessages.size(); i++) {
+            ChatMessageDTO msg = userMessages.get(i);
             if (msg == null || msg.getContent() == null || msg.getContent().isBlank()) {
                 continue;
             }
@@ -57,9 +61,13 @@ public class ChatAgentService {
             if (!"user".equals(role) && !"assistant".equals(role)) {
                 continue;
             }
+            String content = msg.getContent().trim();
+            if (content.length() > MAX_MESSAGE_LENGTH) {
+                throw new IllegalArgumentException("单条消息不能超过 " + MAX_MESSAGE_LENGTH + " 字");
+            }
             ObjectNode node = objectMapper.createObjectNode();
             node.put("role", role);
-            node.put("content", msg.getContent().trim());
+            node.put("content", content);
             messages.add(node);
         }
 
@@ -71,7 +79,7 @@ public class ChatAgentService {
         int maxRounds = Math.max(1, llmProperties.getMaxToolRounds());
 
         for (int round = 0; round < maxRounds; round++) {
-            JsonNode response = llmClient.chat(messages, tools);
+            JsonNode response = llmClient.chat(provider, messages, tools);
             JsonNode choice = response.path("choices").path(0);
             JsonNode message = choice.path("message");
             if (message.isMissingNode() || message.isNull()) {
@@ -114,8 +122,15 @@ public class ChatAgentService {
         throw new IllegalStateException("工具调用轮次过多，请简化问题后重试");
     }
 
-    private String buildSystemPrompt() {
+    private String buildSystemPrompt(String providerName) {
         String today = LocalDate.now(ZONE).toString();
-        return promptTemplate.replace("{{today}}", today);
+        LlmProperties.Provider provider = llmProperties.requireProvider(providerName);
+        String displayName = provider.getDisplayName() == null || provider.getDisplayName().isBlank()
+                ? provider.getModel()
+                : provider.getDisplayName();
+        String modelIdentity = displayName + "（" + provider.getModel() + "）";
+        return promptTemplate
+                .replace("{{today}}", today)
+                .replace("{{modelIdentity}}", modelIdentity);
     }
 }

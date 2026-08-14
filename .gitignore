@@ -29,5 +29,8 @@ app.pid
 .env.local
 .env.*.local
 
+# 本地敏感配置（参考同目录的 .example.yaml 创建）
+backend/src/main/resources/application-secrets.yaml
+
 # 本地脚本 / 种子数据 / 部署凭据（不入库）
 deploy/

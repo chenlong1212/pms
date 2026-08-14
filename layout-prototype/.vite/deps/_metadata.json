@@ -1,0 +1,67 @@
+{
+  "hash": "70fff73f",
+  "configHash": "f90b8326",
+  "lockfileHash": "e3b0c442",
+  "browserHash": "efe03c00",
+  "optimized": {
+    "axios": {
+      "src": "../../../frontend/node_modules/axios/index.js",
+      "file": "axios.js",
+      "fileHash": "adc76ae2",
+      "needsInterop": false
+    },
+    "echarts": {
+      "src": "../../../frontend/node_modules/echarts/index.js",
+      "file": "echarts.js",
+      "fileHash": "fd889ffc",
+      "needsInterop": false
+    },
+    "element-plus": {
+      "src": "../../../frontend/node_modules/element-plus/es/index.mjs",
+      "file": "element-plus.js",
+      "fileHash": "f81baa14",
+      "needsInterop": false
+    },
+    "element-plus/es/locale/lang/zh-cn": {
+      "src": "../../../frontend/node_modules/element-plus/es/locale/lang/zh-cn.mjs",
+      "file": "element-plus_es_locale_lang_zh-cn.js",
+      "fileHash": "dfc25252",
+      "needsInterop": false
+    },
+    "hls.js": {
+      "src": "../../../frontend/node_modules/hls.js/dist/hls.mjs",
+      "file": "hls__js.js",
+      "fileHash": "e0ce52a4",
+      "needsInterop": false
+    },
+    "vue": {
+      "src": "../../../frontend/node_modules/vue/dist/vue.esm-bundler.js",
+      "file": "vue.js",
+      "fileHash": "068dd264",
+      "needsInterop": false
+    },
+    "three": {
+      "src": "../../../frontend/node_modules/three/build/three.module.js",
+      "file": "three.js",
+      "fileHash": "78fae67a",
+      "needsInterop": false
+    },
+    "three/examples/jsm/controls/OrbitControls.js": {
+      "src": "../../../frontend/node_modules/three/examples/jsm/controls/OrbitControls.js",
+      "file": "three_examples_jsm_controls_OrbitControls__js.js",
+      "fileHash": "bc842f0c",
+      "needsInterop": false
+    }
+  },
+  "chunks": {
+    "chunk-J7ZGJDRP": {
+      "file": "chunk-J7ZGJDRP.js"
+    },
+    "chunk-BP3ROVXK": {
+      "file": "chunk-BP3ROVXK.js"
+    },
+    "chunk-G3PMV62Z": {
+      "file": "chunk-G3PMV62Z.js"
+    }
+  }
+}

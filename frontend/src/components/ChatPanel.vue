@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { nextTick, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { sendChat, type ChatMessage } from '../api/chat'
+import { sendChat, type ChatMessage, type ModelProvider } from '../api/chat'
 
 const messages = ref<ChatMessage[]>([
   {
@@ -12,12 +12,21 @@ const messages = ref<ChatMessage[]>([
 const input = ref('')
 const loading = ref(false)
 const listRef = ref<HTMLElement | null>(null)
+const provider = ref<ModelProvider>('fanli')
+
+const modelOptions: Array<{ label: string; value: ModelProvider }> = [
+  { label: 'DeepSeek', value: 'deepseek' },
+  { label: 'Qwen', value: 'qwen' },
+  { label: '范蠡大模型', value: 'fanli' },
+]
 
 const suggestions = [
   '现在溶氧多少？',
   '有哪些池塘？',
   '一号塘今天建议喂多少？',
 ]
+
+const MAX_HISTORY_MESSAGES = 10
 
 async function scrollToBottom() {
   await nextTick()
@@ -36,8 +45,10 @@ async function ask(text: string) {
   await scrollToBottom()
 
   try {
-    const history = messages.value.filter((m) => m.role === 'user' || m.role === 'assistant')
-    const { data } = await sendChat(history)
+    const history = messages.value
+      .filter((m) => m.role === 'user' || m.role === 'assistant')
+      .slice(-MAX_HISTORY_MESSAGES)
+    const { data } = await sendChat(provider.value, history)
     if (data.code !== 200 || !data.data?.content) {
       throw new Error(data.message || '问答失败')
     }
@@ -66,8 +77,24 @@ function onSubmit() {
 <template>
   <section class="chat-panel panel">
     <header class="chat-panel__header">
-      <h2 class="section-title">运营问答助手</h2>
-      <span class="chat-panel__hint">可查询水质 / 生物量 / 投喂</span>
+      <div>
+        <h2 class="section-title">智能体</h2>
+        <span class="chat-panel__hint">可查询水质 / 生物量 / 投喂</span>
+      </div>
+      <el-select
+        v-model="provider"
+        class="chat-panel__model"
+        size="small"
+        :disabled="loading"
+        aria-label="选择智能体模型"
+      >
+        <el-option
+          v-for="option in modelOptions"
+          :key="option.value"
+          :label="option.label"
+          :value="option.value"
+        />
+      </el-select>
     </header>
 
     <div ref="listRef" class="chat-panel__messages" v-loading="loading">
@@ -100,6 +127,8 @@ function onSubmit() {
         v-model="input"
         type="textarea"
         :rows="2"
+        :maxlength="500"
+        show-word-limit
         resize="none"
         placeholder="例如：一号塘最近 7 天生物量怎么样？"
         :disabled="loading"
@@ -125,16 +154,25 @@ function onSubmit() {
 
 .chat-panel__header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 8px;
   flex-shrink: 0;
+}
+
+.chat-panel__header > div {
+  min-width: 0;
 }
 
 .chat-panel__hint {
   color: var(--text-muted);
   font-size: 12px;
   white-space: nowrap;
+}
+
+.chat-panel__model {
+  width: 112px;
+  flex-shrink: 0;
 }
 
 .chat-panel__messages {
@@ -188,8 +226,8 @@ function onSubmit() {
 }
 
 .chat-bubble--user .chat-bubble__content {
-  background: rgba(86, 180, 233, 0.16);
-  border: 1px solid rgba(86, 180, 233, 0.28);
+  background: rgba(25, 126, 165, 0.38);
+  border: 1px solid rgba(50, 211, 225, 0.38);
   color: var(--text-primary);
 }
 

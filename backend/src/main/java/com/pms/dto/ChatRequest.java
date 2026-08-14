@@ -7,5 +7,6 @@ import java.util.List;
 
 @Data
 public class ChatRequest {
+    private String provider;
     private List<ChatMessageDTO> messages = new ArrayList<>();
 }

@@ -1,6 +1,8 @@
 spring:
   application:
     name: pms-backend
+  config:
+    import: optional:classpath:application-secrets.yaml
   profiles:
     active: local
 
@@ -35,8 +37,21 @@ video:
   stream-url: https://cmgw-vpc.lechange.com:8890/LCO/7C01A28PAF00329/9/1/20241210T003832/127e645b7469407abc9f252bbd8fef22.m3u8?proto=https&source=open
 
 llm:
-  base-url: https://api.deepseek.com
-  api-key: sk-64d255c0212c43669e848a53f6a398ef
-  model: deepseek-chat
+  default-provider: fanli
+  providers:
+    deepseek:
+      base-url: https://api.deepseek.com/v1
+      model: deepseek-chat
+      display-name: DeepSeek
+    qwen:
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      model: qwen3.7-flash
+      display-name: 千问
+    fanli:
+      base-url: https://maas-api.ai-yuanjing.com/openapi/compatible-mode/v1
+      model: fanli-vl-397b
+      display-name: 范蠡大模型
   timeout-ms: 60000
   max-tool-rounds: 5
+  # 范蠡模型包含推理 token；过低会在推理结束前截断，导致正文为空。
+  max-tokens: 2500

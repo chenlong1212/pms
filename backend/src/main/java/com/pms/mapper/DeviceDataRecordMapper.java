@@ -28,4 +28,8 @@ public interface DeviceDataRecordMapper {
 
     List<DeviceDataRecord> findTrendData(@Param("deviceId") String deviceId,
                                          @Param("startTime") String startTime);
+
+    List<DeviceDataRecord> findRange(@Param("deviceId") String deviceId,
+                                     @Param("startTime") String startTime,
+                                     @Param("endTime") String endTime);
 }
