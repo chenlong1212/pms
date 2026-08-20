@@ -39,9 +39,18 @@ export interface FeedingStrategy {
   avgWeightKg: number | null
   dailyRate: number | null
   dailyFeedKg: number | null
+  mealsPerDay: number
+  feedTimes: string[]
+  mealAmountsKg: number[]
   plans: FeedingPlan[]
   summaryText: string
   available: boolean
+}
+
+export interface FeedingStrategyRequest {
+  dailyRate: number
+  mealsPerDay: number
+  feedTimes: string[]
 }
 
 export function getPonds() {
@@ -70,6 +79,10 @@ export function getFeedingStrategy(pondId: number) {
   return api.get<ApiResponse<FeedingStrategy>>('/feeding/strategy', {
     params: { pondId },
   })
+}
+
+export function updateFeedingStrategy(pondId: number, body: FeedingStrategyRequest) {
+  return api.put<ApiResponse<FeedingStrategy>>(`/feeding/strategy/${pondId}`, body)
 }
 
 export function buildPlanRemark(plan: FeedingPlan): string {

@@ -3,13 +3,16 @@ package com.pms.service;
 import com.pms.dto.FeedingRecordRequest;
 import com.pms.dto.FeedingRecordVO;
 import com.pms.dto.FeedingStrategyVO;
+import com.pms.dto.FeedingStrategyRequest;
 import com.pms.dto.PageResult;
 import com.pms.dto.PondVO;
 import com.pms.entity.BiomassRecord;
 import com.pms.entity.FeedingRecord;
+import com.pms.entity.FeedingStrategySetting;
 import com.pms.entity.Pond;
 import com.pms.mapper.BiomassRecordMapper;
 import com.pms.mapper.FeedingRecordMapper;
+import com.pms.mapper.FeedingStrategyMapper;
 import com.pms.mapper.PondMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,7 +24,9 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -34,6 +39,7 @@ public class FeedingService {
     private final PondMapper pondMapper;
     private final FeedingRecordMapper feedingRecordMapper;
     private final BiomassRecordMapper biomassRecordMapper;
+    private final FeedingStrategyMapper feedingStrategyMapper;
 
     public List<PondVO> getPonds() {
         return pondMapper.findAll().stream()
@@ -91,6 +97,7 @@ public class FeedingService {
 
     public FeedingStrategyVO getStrategy(int pondId) {
         Pond pond = validatePond(pondId);
+        FeedingStrategySetting setting = getOrCreateStrategySetting(pondId);
         LocalDate today = LocalDate.now(ZONE);
         String todayStr = today.format(DATE_FORMATTER);
         BiomassRecord biomass = biomassRecordMapper.findByPondAndDate(pondId, todayStr);
@@ -99,26 +106,71 @@ public class FeedingService {
         vo.setPondId(pond.getId());
         vo.setPondName(pond.getName());
         vo.setFishSpecies(pond.getFishSpecies());
+        vo.setDailyRate(setting.getDailyRate());
+        vo.setMealsPerDay(setting.getMealsPerDay());
+        vo.setFeedTimes(settingTimes(setting));
 
         if (biomass == null || biomass.getBiomassKg() == null) {
             vo.setAvailable(false);
+            vo.setMealAmountsKg(List.of());
+            vo.setPlans(List.of());
             vo.setSummaryText("暂无当日生物量数据，无法计算投喂策略。请先确保今日生物量已录入。");
             return vo;
         }
 
         BigDecimal biomassKg = biomass.getBiomassKg();
         BigDecimal avgWeightKg = biomass.getAvgWeightKg();
-        BigDecimal dailyRate = resolveDailyRate(avgWeightKg);
+        BigDecimal dailyRate = setting.getDailyRate();
         BigDecimal dailyFeedKg = biomassKg.multiply(dailyRate).setScale(1, RoundingMode.HALF_UP);
 
         vo.setBiomassKg(biomassKg);
         vo.setAvgWeightKg(avgWeightKg);
         vo.setDailyRate(dailyRate);
         vo.setDailyFeedKg(dailyFeedKg);
+        vo.setMealAmountsKg(distributeAmounts(dailyFeedKg, setting.getMealsPerDay()));
         vo.setPlans(buildPlans(dailyFeedKg));
         vo.setAvailable(true);
-        vo.setSummaryText(buildSummaryText(pond, biomassKg, avgWeightKg, dailyRate, dailyFeedKg, vo.getPlans()));
+        vo.setSummaryText(buildSummaryText(pond, biomassKg, avgWeightKg, dailyRate, dailyFeedKg,
+                vo.getFeedTimes(), vo.getMealAmountsKg()));
         return vo;
+    }
+
+    public FeedingStrategyVO updateStrategy(int pondId, FeedingStrategyRequest request) {
+        validatePond(pondId);
+        if (request == null || request.getDailyRate() == null) {
+            throw new IllegalArgumentException("投喂比例不能为空");
+        }
+        BigDecimal minRate = new BigDecimal("0.0200");
+        BigDecimal maxRate = new BigDecimal("0.0300");
+        if (request.getDailyRate().compareTo(minRate) < 0 || request.getDailyRate().compareTo(maxRate) > 0) {
+            throw new IllegalArgumentException("投喂比例必须在 2%–3% 之间");
+        }
+        if (request.getMealsPerDay() == null || request.getMealsPerDay() < 1 || request.getMealsPerDay() > 3) {
+            throw new IllegalArgumentException("每日投喂次数必须为 1–3 次");
+        }
+        List<String> times = request.getFeedTimes();
+        if (times == null || times.size() != request.getMealsPerDay()) {
+            throw new IllegalArgumentException("投喂时间数量必须与每日投喂次数一致");
+        }
+        List<String> normalizedTimes = times.stream().map(this::normalizeFeedTime).toList();
+        Set<String> uniqueTimes = new HashSet<>(normalizedTimes);
+        if (uniqueTimes.size() != normalizedTimes.size()) {
+            throw new IllegalArgumentException("每次投喂时间不能重复");
+        }
+
+        LocalDateTime now = LocalDateTime.now(ZONE);
+        FeedingStrategySetting existing = feedingStrategyMapper.findByPondId(pondId);
+        FeedingStrategySetting setting = new FeedingStrategySetting();
+        setting.setPondId(pondId);
+        setting.setDailyRate(request.getDailyRate().setScale(4, RoundingMode.HALF_UP));
+        setting.setMealsPerDay(request.getMealsPerDay());
+        setting.setFeedTime1(normalizedTimes.get(0));
+        setting.setFeedTime2(normalizedTimes.size() > 1 ? normalizedTimes.get(1) : null);
+        setting.setFeedTime3(normalizedTimes.size() > 2 ? normalizedTimes.get(2) : null);
+        setting.setCreatedAt(existing != null ? existing.getCreatedAt() : now);
+        setting.setUpdatedAt(now);
+        feedingStrategyMapper.upsert(setting);
+        return getStrategy(pondId);
     }
 
     private Pond validatePond(Integer pondId) {
@@ -169,20 +221,47 @@ public class FeedingService {
         return record;
     }
 
-    private BigDecimal resolveDailyRate(BigDecimal avgWeightKg) {
-        if (avgWeightKg == null) {
-            return new BigDecimal("0.025");
+    private FeedingStrategySetting getOrCreateStrategySetting(int pondId) {
+        FeedingStrategySetting setting = feedingStrategyMapper.findByPondId(pondId);
+        if (setting != null) return setting;
+        LocalDateTime now = LocalDateTime.now(ZONE);
+        setting = new FeedingStrategySetting();
+        setting.setPondId(pondId);
+        setting.setDailyRate(new BigDecimal("0.0250"));
+        setting.setMealsPerDay(2);
+        setting.setFeedTime1("08:00");
+        setting.setFeedTime2("17:00");
+        setting.setCreatedAt(now);
+        setting.setUpdatedAt(now);
+        feedingStrategyMapper.upsert(setting);
+        return setting;
+    }
+
+    private List<String> settingTimes(FeedingStrategySetting setting) {
+        List<String> times = new ArrayList<>();
+        if (setting.getFeedTime1() != null) times.add(setting.getFeedTime1());
+        if (setting.getMealsPerDay() >= 2 && setting.getFeedTime2() != null) times.add(setting.getFeedTime2());
+        if (setting.getMealsPerDay() >= 3 && setting.getFeedTime3() != null) times.add(setting.getFeedTime3());
+        return times;
+    }
+
+    private String normalizeFeedTime(String value) {
+        if (value == null || !value.trim().matches("^(?:[01]\\d|2[0-3]):[0-5]\\d$")) {
+            throw new IllegalArgumentException("投喂时间格式必须为 HH:mm");
         }
-        if (avgWeightKg.compareTo(new BigDecimal("0.1")) < 0) {
-            return new BigDecimal("0.06");
+        return value.trim();
+    }
+
+    private List<BigDecimal> distributeAmounts(BigDecimal dailyFeedKg, int mealsPerDay) {
+        List<BigDecimal> amounts = new ArrayList<>();
+        BigDecimal base = dailyFeedKg.divide(BigDecimal.valueOf(mealsPerDay), 1, RoundingMode.HALF_UP);
+        BigDecimal allocated = BigDecimal.ZERO;
+        for (int i = 0; i < mealsPerDay - 1; i++) {
+            amounts.add(base);
+            allocated = allocated.add(base);
         }
-        if (avgWeightKg.compareTo(new BigDecimal("0.5")) < 0) {
-            return new BigDecimal("0.04");
-        }
-        if (avgWeightKg.compareTo(new BigDecimal("1.0")) < 0) {
-            return new BigDecimal("0.025");
-        }
-        return new BigDecimal("0.015");
+        amounts.add(dailyFeedKg.subtract(allocated).setScale(1, RoundingMode.HALF_UP));
+        return amounts;
     }
 
     private List<FeedingStrategyVO.FeedingPlanVO> buildPlans(BigDecimal dailyFeedKg) {
@@ -194,21 +273,16 @@ public class FeedingService {
         oneMeal.setAmountsKg(List.of(dailyFeedKg));
         plans.add(oneMeal);
 
-        BigDecimal morning2 = dailyFeedKg.multiply(new BigDecimal("0.6")).setScale(1, RoundingMode.HALF_UP);
-        BigDecimal evening2 = dailyFeedKg.subtract(morning2).setScale(1, RoundingMode.HALF_UP);
         FeedingStrategyVO.FeedingPlanVO twoMeals = new FeedingStrategyVO.FeedingPlanVO();
         twoMeals.setMealsPerDay(2);
         twoMeals.setDescription("2 餐/日");
-        twoMeals.setAmountsKg(List.of(morning2, evening2));
+        twoMeals.setAmountsKg(distributeAmounts(dailyFeedKg, 2));
         plans.add(twoMeals);
 
-        BigDecimal morning3 = dailyFeedKg.multiply(new BigDecimal("0.4")).setScale(1, RoundingMode.HALF_UP);
-        BigDecimal noon3 = dailyFeedKg.multiply(new BigDecimal("0.3")).setScale(1, RoundingMode.HALF_UP);
-        BigDecimal evening3 = dailyFeedKg.subtract(morning3).subtract(noon3).setScale(1, RoundingMode.HALF_UP);
         FeedingStrategyVO.FeedingPlanVO threeMeals = new FeedingStrategyVO.FeedingPlanVO();
         threeMeals.setMealsPerDay(3);
         threeMeals.setDescription("3 餐/日");
-        threeMeals.setAmountsKg(List.of(morning3, noon3, evening3));
+        threeMeals.setAmountsKg(distributeAmounts(dailyFeedKg, 3));
         plans.add(threeMeals);
 
         return plans;
@@ -216,25 +290,19 @@ public class FeedingService {
 
     private String buildSummaryText(Pond pond, BigDecimal biomassKg, BigDecimal avgWeightKg,
                                     BigDecimal dailyRate, BigDecimal dailyFeedKg,
-                                    List<FeedingStrategyVO.FeedingPlanVO> plans) {
-        int ratePercent = dailyRate.multiply(new BigDecimal("100")).setScale(1, RoundingMode.HALF_UP).intValue();
+                                    List<String> feedTimes, List<BigDecimal> mealAmounts) {
+        BigDecimal ratePercent = dailyRate.multiply(new BigDecimal("100")).setScale(1, RoundingMode.HALF_UP);
         StringBuilder sb = new StringBuilder();
-        sb.append(String.format("%s（%s）今日生物量 %s kg，平均体重 %s kg，建议日投喂率 %d%%，日总量约 %s kg。%n%n",
+        sb.append(String.format("%s（%s）今日生物量 %s kg，平均体重 %s kg，日投喂率 %s%%，日总量约 %s kg。%n%n",
                 pond.getName(), pond.getFishSpecies(),
                 biomassKg.setScale(0, RoundingMode.HALF_UP),
-                avgWeightKg.setScale(2, RoundingMode.HALF_UP),
+                avgWeightKg != null ? avgWeightKg.setScale(2, RoundingMode.HALF_UP) : "--",
                 ratePercent,
                 dailyFeedKg));
-
-        FeedingStrategyVO.FeedingPlanVO plan1 = plans.get(0);
-        FeedingStrategyVO.FeedingPlanVO plan2 = plans.get(1);
-        FeedingStrategyVO.FeedingPlanVO plan3 = plans.get(2);
-
-        sb.append(String.format("• 1 餐/日：每次 %s kg%n", plan1.getAmountsKg().get(0)));
-        sb.append(String.format("• 2 餐/日：早 %s kg，晚 %s kg%n",
-                plan2.getAmountsKg().get(0), plan2.getAmountsKg().get(1)));
-        sb.append(String.format("• 3 餐/日：早 %s kg，中 %s kg，晚 %s kg%n%n",
-                plan3.getAmountsKg().get(0), plan3.getAmountsKg().get(1), plan3.getAmountsKg().get(2)));
+        for (int i = 0; i < feedTimes.size(); i++) {
+            sb.append(String.format("• %s：%s kg%n", feedTimes.get(i), mealAmounts.get(i)));
+        }
+        sb.append(System.lineSeparator());
         sb.append("以上为估算参考，请结合水温和鱼群摄食情况调整。");
         return sb.toString();
     }

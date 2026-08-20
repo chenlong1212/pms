@@ -3,6 +3,7 @@ package com.pms.controller;
 import com.pms.dto.FeedingRecordRequest;
 import com.pms.dto.FeedingRecordVO;
 import com.pms.dto.FeedingStrategyVO;
+import com.pms.dto.FeedingStrategyRequest;
 import com.pms.dto.PageResult;
 import com.pms.dto.PondVO;
 import com.pms.service.FeedingService;
@@ -74,6 +75,17 @@ public class FeedingController {
     @GetMapping("/strategy")
     public ResponseEntity<Map<String, Object>> getStrategy(@RequestParam int pondId) {
         FeedingStrategyVO data = feedingService.getStrategy(pondId);
+        Map<String, Object> result = new HashMap<>();
+        result.put("code", 200);
+        result.put("data", data);
+        return ResponseEntity.ok(result);
+    }
+
+    @PutMapping("/strategy/{pondId}")
+    public ResponseEntity<Map<String, Object>> updateStrategy(
+            @PathVariable int pondId,
+            @RequestBody FeedingStrategyRequest request) {
+        FeedingStrategyVO data = feedingService.updateStrategy(pondId, request);
         Map<String, Object> result = new HashMap<>();
         result.put("code", 200);
         result.put("data", data);

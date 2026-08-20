@@ -5,6 +5,8 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Mapper
 public interface BiomassRecordMapper {
@@ -15,4 +17,10 @@ public interface BiomassRecordMapper {
 
     BiomassRecord findByPondAndDate(@Param("pondId") int pondId,
                                     @Param("recordDate") String recordDate);
+
+    int upsertDailyMetric(@Param("pondId") int pondId,
+                          @Param("recordDate") String recordDate,
+                          @Param("fishCount") int fishCount,
+                          @Param("avgWeightKg") BigDecimal avgWeightKg,
+                          @Param("now") LocalDateTime now);
 }

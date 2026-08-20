@@ -15,6 +15,9 @@ public class FeedingStrategyVO {
     private BigDecimal avgWeightKg;
     private BigDecimal dailyRate;
     private BigDecimal dailyFeedKg;
+    private Integer mealsPerDay;
+    private List<String> feedTimes;
+    private List<BigDecimal> mealAmountsKg;
     private List<FeedingPlanVO> plans;
     private String summaryText;
     private boolean available;

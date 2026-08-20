@@ -30,4 +30,15 @@
         LIMIT 1
     </select>
 
+    <insert id="upsertDailyMetric">
+        INSERT INTO pond_daily_metric
+            (pond_id, record_date, fish_count, avg_weight_kg, created_at, updated_at)
+        VALUES
+            (#{pondId}, #{recordDate}, #{fishCount}, #{avgWeightKg}, #{now}, #{now})
+        ON DUPLICATE KEY UPDATE
+            fish_count = VALUES(fish_count),
+            avg_weight_kg = VALUES(avg_weight_kg),
+            updated_at = VALUES(updated_at)
+    </insert>
+
 </mapper>

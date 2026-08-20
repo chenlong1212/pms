@@ -99,6 +99,12 @@
                 {{ currentQualityGrade.label }}
               </strong>
               <span class="quality-assessment__hint">基于溶解氧、pH、水温</span>
+              <button
+                class="quality-assessment__guide-button"
+                type="button"
+                aria-haspopup="dialog"
+                @click="qualityGuideVisible = true"
+              >等级说明</button>
             </div>
             <div class="metric-card__predictions quality-assessment__predictions">
               <div v-for="min in predictMinutes" :key="`quality-${min}`" class="predict-row">
@@ -129,6 +135,9 @@
               @click="biomassDays = days; fetchBiomassTrend()"
             >{{ days }}天</button>
           </div>
+          <button class="biomass-correction-button" type="button" @click="biomassCorrectionRef?.open()">
+            数据校正
+          </button>
         </div>
         <div class="feeding-strategy-row">
           <span class="feeding-strategy-row__label">投喂策略</span>
@@ -136,7 +145,9 @@
             建议投喂量 {{ feedingStrategy.dailyFeedKg }} kg
           </strong>
           <span v-else>暂无可用策略</span>
-          <small v-if="feedingStrategy?.dailyRate != null">日投喂率 {{ feedingStrategy.dailyRate }}%</small>
+          <button class="feeding-strategy-row__detail" type="button" @click="strategyDialogRef?.open()">
+            详细信息
+          </button>
         </div>
         <div v-loading="biomassLoading" class="biomass-body">
           <BiomassTrendChart v-if="biomassTrendData" :data="biomassTrendData" :light-mode="isLightTheme" />
@@ -187,6 +198,67 @@
     </main>
 
     <HeaderReportDialog ref="reportDialogRef" :ponds="ponds" :selected-pond-id="selectedPondId" />
+    <FeedingStrategyDialog ref="strategyDialogRef" :ponds="ponds" @saved="handleStrategySaved" />
+    <BiomassCorrectionDialog
+      ref="biomassCorrectionRef"
+      :ponds="ponds"
+      :selected-pond-id="selectedPondId"
+      @saved="handleBiomassCorrected"
+    />
+
+    <el-dialog
+      v-model="qualityGuideVisible"
+      class="quality-guide-dialog"
+      title="水质综合评估等级说明"
+      width="min(620px, 92vw)"
+      append-to-body
+    >
+      <div class="quality-guide">
+        <p class="quality-guide__intro">
+          综合等级由溶解氧、pH 和水温共同决定，取三个单项指标中的最低等级。
+        </p>
+        <div class="quality-guide__levels">
+          <section class="quality-guide__level quality-guide__level--good">
+            <span class="quality-guide__badge grade--good">优</span>
+            <div>
+              <strong>水质适宜</strong>
+              <p>三个指标均处于“优”范围，适合鱼类正常生长。</p>
+            </div>
+          </section>
+          <section class="quality-guide__level quality-guide__level--warn">
+            <span class="quality-guide__badge grade--warn">中</span>
+            <div>
+              <strong>需要关注</strong>
+              <p>没有“差”指标，但至少一个指标处于“中”范围，建议加强监测。</p>
+            </div>
+          </section>
+          <section class="quality-guide__level quality-guide__level--bad">
+            <span class="quality-guide__badge grade--bad">差</span>
+            <div>
+              <strong>需要处置</strong>
+              <p>任意一个指标进入“差”范围，应及时检查并采取调水、增氧等措施。</p>
+            </div>
+          </section>
+        </div>
+
+        <div class="quality-guide__table-wrap">
+          <table class="quality-guide__table">
+            <thead>
+              <tr><th>指标</th><th>优</th><th>中</th><th>差</th></tr>
+            </thead>
+            <tbody>
+              <tr><th>溶解氧</th><td>5–15 mg/L</td><td>≥ 3 且不在优范围</td><td>&lt; 3 mg/L</td></tr>
+              <tr><th>pH</th><td>6.5–8.5</td><td>6–9 且不在优范围</td><td>&lt; 6 或 &gt; 9</td></tr>
+              <tr><th>水温</th><td>18–30 ℃</td><td>12–34 ℃且不在优范围</td><td>&lt; 12 ℃或 &gt; 34 ℃</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="quality-guide__note">当数据缺失或无效时，综合等级显示“--”。</p>
+      </div>
+      <template #footer>
+        <el-button type="primary" @click="qualityGuideVisible = false">我知道了</el-button>
+      </template>
+    </el-dialog>
 
     <teleport to="body">
       <transition name="trend-fade">
@@ -251,6 +323,8 @@ import FeedingRecordSection from './components/FeedingRecordSection.vue'
 import ChatPanel from './components/ChatPanel.vue'
 import HeaderReportDialog from './components/HeaderReportDialog.vue'
 import ProductionReportSection from './components/ProductionReportSection.vue'
+import FeedingStrategyDialog from './components/FeedingStrategyDialog.vue'
+import BiomassCorrectionDialog from './components/BiomassCorrectionDialog.vue'
 import pondAerialImage from './assets/pond-aerial.jpg'
 import { getLatest, getTrend, type DeviceData } from './api/device'
 import { getPonds, getBiomassTrend, type Pond, type BiomassTrend } from './api/biomass'
@@ -275,6 +349,7 @@ const externalSystems: ExternalSystem[] = [
 const loading = ref(false)
 const latestData = ref<DeviceData | null>(null)
 const trendDialogVisible = ref(false)
+const qualityGuideVisible = ref(false)
 const trendData = ref<DeviceData[]>([])
 const predictTrendData = ref<DeviceData[]>([])
 const trendHours = ref(24)
@@ -287,6 +362,8 @@ const activeSystem = ref<ExternalSystem | null>(null)
 const currentTime = ref('')
 const reportDialogRef = ref<InstanceType<typeof HeaderReportDialog> | null>(null)
 const feedingStrategy = ref<FeedingStrategy | null>(null)
+const strategyDialogRef = ref<InstanceType<typeof FeedingStrategyDialog> | null>(null)
+const biomassCorrectionRef = ref<InstanceType<typeof BiomassCorrectionDialog> | null>(null)
 const isLightTheme = ref(false)
 
 let refreshTimer: ReturnType<typeof setInterval> | null = null
@@ -336,6 +413,14 @@ function predictionTimeLabel(minutes: number) {
   if (minutes === 90) return '1.5小时后'
   if (minutes === 120) return '2小时后'
   return `${minutes}分钟后`
+}
+
+function handleStrategySaved(strategy: FeedingStrategy) {
+  if (strategy.pondId === selectedPondId.value) feedingStrategy.value = strategy
+}
+
+async function handleBiomassCorrected() {
+  await fetchBiomassTrend()
 }
 
 function metricGrade(key: MetricKey, rawValue: number | string | null): WaterGrade {
@@ -1681,7 +1766,132 @@ onUnmounted(() => {
   line-height: 1.35;
 }
 
+.quality-assessment__guide-button {
+  align-self: flex-start;
+  margin-top: 7px;
+  padding: 3px 9px;
+  border: 1px solid rgba(53, 236, 244, .58);
+  border-radius: 999px;
+  background: rgba(20, 112, 126, .28);
+  color: #8cf8f3;
+  font-family: var(--font-body);
+  font-size: 9px;
+  line-height: 1.35;
+  cursor: pointer;
+  transition: border-color .18s ease, background .18s ease, color .18s ease;
+}
+
+.quality-assessment__guide-button:hover {
+  border-color: #35ecf4;
+  background: rgba(25, 157, 169, .38);
+  color: #fff;
+}
+
+.quality-assessment__guide-button:focus-visible {
+  outline: 2px solid #35ecf4;
+  outline-offset: 2px;
+}
+
 .quality-assessment__predictions .predict-value { font-size: 14px; }
+
+:global(.quality-guide-dialog) {
+  border: 1px solid rgba(48, 216, 226, .5);
+  border-radius: 10px;
+  background: #0a2340;
+  box-shadow: 0 18px 60px rgba(0, 8, 22, .62), 0 0 30px rgba(24, 202, 214, .12);
+}
+
+:global(.quality-guide-dialog .el-dialog__title) {
+  color: #dffcff;
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+:global(.quality-guide-dialog .el-dialog__close) { color: #9ddde4; }
+
+.quality-guide { color: #d7e6ee; }
+
+.quality-guide__intro {
+  margin: 0 0 16px;
+  color: #a9c1cf;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.quality-guide__levels {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.quality-guide__level {
+  display: flex;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(116, 165, 190, .24);
+  border-radius: 8px;
+  background: rgba(16, 50, 75, .72);
+}
+
+.quality-guide__level--good { border-color: rgba(48, 232, 210, .38); }
+.quality-guide__level--warn { border-color: rgba(255, 195, 59, .38); }
+.quality-guide__level--bad { border-color: rgba(255, 77, 79, .38); }
+
+.quality-guide__badge {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 28px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.quality-guide__level strong { color: #f2fbff; font-size: 13px; }
+.quality-guide__level p { margin: 5px 0 0; color: #9eb6c5; font-size: 11px; line-height: 1.55; }
+
+.quality-guide__table-wrap {
+  overflow-x: auto;
+  border: 1px solid rgba(93, 166, 194, .3);
+  border-radius: 8px;
+}
+
+.quality-guide__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  text-align: left;
+}
+
+.quality-guide__table th,
+.quality-guide__table td {
+  padding: 10px 12px;
+  border-right: 1px solid rgba(93, 166, 194, .2);
+  border-bottom: 1px solid rgba(93, 166, 194, .2);
+  white-space: nowrap;
+}
+
+.quality-guide__table tr:last-child th,
+.quality-guide__table tr:last-child td { border-bottom: 0; }
+.quality-guide__table th:last-child,
+.quality-guide__table td:last-child { border-right: 0; }
+.quality-guide__table thead th { background: rgba(31, 106, 129, .34); color: #bff8f4; }
+.quality-guide__table tbody th { color: #e5f4f8; }
+.quality-guide__table tbody td { color: #b7cbd5; }
+
+.quality-guide__note {
+  margin: 10px 0 0;
+  color: #819dab;
+  font-size: 11px;
+}
+
+@media (max-width: 640px) {
+  .quality-guide__levels { grid-template-columns: 1fr; }
+}
 
 .biomass-column {
   height: 100%;
@@ -1691,22 +1901,27 @@ onUnmounted(() => {
 .biomass-column .section-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 5px;
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+  gap: 4px;
+  min-width: 0;
   margin-bottom: 7px;
 }
 
 .biomass-column .biomass-title {
-  min-width: 0;
-  font-size: 13px;
+  min-width: 100px;
+  flex: 1 1 auto;
+  overflow: hidden;
+  font-size: 11px;
   letter-spacing: -.03em;
   white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .biomass-column .biomass-title svg {
-  width: 15px;
-  height: 15px;
-  flex: 0 0 15px;
+  width: 13px;
+  height: 13px;
+  flex: 0 0 13px;
 }
 
 .biomass-day-tabs {
@@ -1720,13 +1935,13 @@ onUnmounted(() => {
 
 .biomass-day-tabs button {
   min-width: 0;
-  height: 27px;
-  padding: 0 2px;
+  height: 24px;
+  padding: 0 1px;
   border: 0;
   border-right: 1px solid rgba(54, 143, 191, .5);
   background: rgba(7, 31, 59, .76);
   color: #9db5ca;
-  font: 600 8px/1 var(--font-body);
+  font: 600 7px/1 var(--font-body);
   white-space: nowrap;
   cursor: pointer;
 }
@@ -1742,6 +1957,32 @@ onUnmounted(() => {
 .theme-light .biomass-day-tabs { border-color: rgba(35, 132, 168, .5); }
 .theme-light .biomass-day-tabs button { background: #edf6fa; color: #557489; }
 .theme-light .biomass-day-tabs button.active { background: #22b9c8; color: #fff; }
+
+.biomass-correction-button {
+  height: 25px;
+  padding: 0 6px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(46, 214, 224, .55);
+  border-radius: 4px;
+  background: rgba(17, 111, 130, .28);
+  color: #8ff8f2;
+  font: 600 9px/1 var(--font-body);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.biomass-correction-button:hover {
+  border-color: #2ed6e0;
+  background: rgba(24, 153, 166, .4);
+  color: #fff;
+}
+
+.theme-light .biomass-correction-button {
+  border-color: rgba(20, 124, 135, .45);
+  background: rgba(41, 168, 178, .1);
+  color: #147c87;
+}
+
 .biomass-column :deep(.biomass-charts) {
   grid-template-columns: 1fr;
   grid-template-rows: repeat(3, minmax(0, 1fr));
@@ -1781,6 +2022,25 @@ onUnmounted(() => {
   font-size: 9px;
 }
 
+.feeding-strategy-row__detail {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 3px 8px;
+  border: 1px solid rgba(70, 227, 233, .55);
+  border-radius: 999px;
+  background: rgba(32, 145, 158, .22);
+  color: #9ffaf3;
+  font-family: var(--font-body);
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.feeding-strategy-row__detail:hover {
+  border-color: #46e3e9;
+  background: rgba(32, 176, 187, .34);
+  color: #fff;
+}
+
 .biomass-feeding-history {
   flex: 0 0 200px !important;
   height: 200px !important;
@@ -1802,6 +2062,7 @@ onUnmounted(() => {
 
 .theme-light .feeding-strategy-row strong { color: #173f55; }
 .theme-light .feeding-strategy-row small { color: #67879a; }
+.theme-light .feeding-strategy-row__detail { color: #147c87; border-color: rgba(20, 124, 135, .45); }
 .theme-light .biomass-feeding-history { background: rgba(242, 249, 251, .94); }
 
 .center-hub {
