@@ -166,8 +166,9 @@ public class BiomassService {
             if (setupOpt.isPresent()) {
                 PondSetup setup = setupOpt.get();
                 long daysElapsed = java.time.temporal.ChronoUnit.DAYS.between(setup.getStockDate(), d);
-                if (daysElapsed < 0) {
-                    // 推算日期在放养日之前，补零
+                int totalDays = calcTotalDays(setup);
+                if (daysElapsed < 0 || (setup.getHarvestDate() != null && d.isAfter(setup.getHarvestDate()))) {
+                    // 推算日期在放养日之前，或已过收获日期，补零
                     countList.add(0);
                     weightList.add(BigDecimal.ZERO);
                     biomassList.add(BigDecimal.ZERO);
@@ -221,7 +222,7 @@ public class BiomassService {
         double ratio = (double) nt / n0;
         int totalDays = calcTotalDays(setup);
         double exponent = (double) daysElapsed / totalDays;
-        return Math.max(0, Math.round(n0 * Math.pow(ratio, exponent)));
+        return Math.max(0, (int) Math.round(n0 * Math.pow(ratio, exponent)));
     }
 
     /**
