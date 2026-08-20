@@ -135,6 +135,9 @@
               @click="biomassDays = days; fetchBiomassTrend()"
             >{{ days }}天</button>
           </div>
+          <button class="biomass-setup-button" type="button" @click="pondSetupRef?.open()">
+            参数设置
+          </button>
           <button class="biomass-correction-button" type="button" @click="biomassCorrectionRef?.open()">
             数据校正
           </button>
@@ -199,6 +202,12 @@
 
     <HeaderReportDialog ref="reportDialogRef" :ponds="ponds" :selected-pond-id="selectedPondId" />
     <FeedingStrategyDialog ref="strategyDialogRef" :ponds="ponds" @saved="handleStrategySaved" />
+    <PondSetupDialog
+      ref="pondSetupRef"
+      :ponds="ponds"
+      :selected-pond-id="selectedPondId"
+      @setup-saved="handleSetupSaved"
+    />
     <BiomassCorrectionDialog
       ref="biomassCorrectionRef"
       :ponds="ponds"
@@ -325,6 +334,7 @@ import HeaderReportDialog from './components/HeaderReportDialog.vue'
 import ProductionReportSection from './components/ProductionReportSection.vue'
 import FeedingStrategyDialog from './components/FeedingStrategyDialog.vue'
 import BiomassCorrectionDialog from './components/BiomassCorrectionDialog.vue'
+import PondSetupDialog from './components/PondSetupDialog.vue'
 import pondAerialImage from './assets/pond-aerial.jpg'
 import { getLatest, getTrend, type DeviceData } from './api/device'
 import { getPonds, getBiomassTrend, type Pond, type BiomassTrend } from './api/biomass'
@@ -364,6 +374,7 @@ const reportDialogRef = ref<InstanceType<typeof HeaderReportDialog> | null>(null
 const feedingStrategy = ref<FeedingStrategy | null>(null)
 const strategyDialogRef = ref<InstanceType<typeof FeedingStrategyDialog> | null>(null)
 const biomassCorrectionRef = ref<InstanceType<typeof BiomassCorrectionDialog> | null>(null)
+const pondSetupRef = ref<InstanceType<typeof PondSetupDialog> | null>(null)
 const isLightTheme = ref(false)
 
 let refreshTimer: ReturnType<typeof setInterval> | null = null
@@ -417,6 +428,10 @@ function predictionTimeLabel(minutes: number) {
 
 function handleStrategySaved(strategy: FeedingStrategy) {
   if (strategy.pondId === selectedPondId.value) feedingStrategy.value = strategy
+}
+
+async function handleSetupSaved() {
+  await fetchBiomassTrend()
 }
 
 async function handleBiomassCorrected() {
@@ -1981,6 +1996,37 @@ onUnmounted(() => {
   border-color: rgba(20, 124, 135, .45);
   background: rgba(41, 168, 178, .1);
   color: #147c87;
+}
+
+.biomass-setup-button {
+  height: 25px;
+  padding: 0 6px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(143, 92, 255, .5);
+  border-radius: 4px;
+  background: rgba(80, 30, 180, .22);
+  color: #c9a8ff;
+  font: 600 9px/1 var(--font-body);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.biomass-setup-button:hover {
+  border-color: #8f5cff;
+  background: rgba(100, 50, 210, .38);
+  color: #fff;
+}
+
+.theme-light .biomass-setup-button {
+  border-color: rgba(100, 50, 180, .35);
+  background: rgba(143, 92, 255, .08);
+  color: #6b3fa0;
+}
+
+.theme-light .biomass-setup-button:hover {
+  border-color: #8f5cff;
+  background: rgba(143, 92, 255, .18);
+  color: #5a2d8a;
 }
 
 .biomass-column :deep(.biomass-charts) {

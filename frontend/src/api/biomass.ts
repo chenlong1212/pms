@@ -33,12 +33,42 @@ export interface BiomassCorrectionRequest {
   avgWeightKg: number
 }
 
+export interface PondSetup {
+  pondId: number
+  pondName: string
+  fishSpecies: string
+  stockDate: string | null
+  initialFishCount: number | null
+  initialWeightKg: number | null
+  harvestDate: string | null
+  finalFishCount: number | null
+  finalWeightKg: number | null
+}
+
+export interface PondSetupRequest {
+  pondId: number
+  stockDate: string
+  initialFishCount: number
+  initialWeightKg: number
+  harvestDate?: string | null
+  finalFishCount?: number | null
+  finalWeightKg?: number | null
+}
+
 export function getPonds() {
   return api.get<ApiResponse<Pond[]>>('/biomass/ponds')
 }
 
 export function getBiomassTrend(pondId: number, days: number = 30) {
   return api.get<ApiResponse<BiomassTrend>>('/biomass/trend', { params: { pondId, days } })
+}
+
+export function getPondSetup(pondId: number) {
+  return api.get<ApiResponse<PondSetup>>('/biomass/setup', { params: { pondId } })
+}
+
+export function savePondSetup(body: PondSetupRequest) {
+  return api.put<ApiResponse<PondSetup>>('/biomass/setup', body)
 }
 
 export function getBiomassRecord(pondId: number, date: string) {

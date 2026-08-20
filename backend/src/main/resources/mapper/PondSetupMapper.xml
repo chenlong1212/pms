@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.pms.mapper.PondSetupMapper">
+
+    <resultMap id="BaseResultMap" type="com.pms.entity.PondSetup">
+        <id     column="pond_id"           property="pondId"/>
+        <result column="stock_date"        property="stockDate"/>
+        <result column="initial_fish_count" property="initialFishCount"/>
+        <result column="initial_weight_kg"  property="initialWeightKg"/>
+        <result column="harvest_date"       property="harvestDate"/>
+        <result column="final_fish_count"   property="finalFishCount"/>
+        <result column="final_weight_kg"    property="finalWeightKg"/>
+        <result column="created_at"         property="createdAt"/>
+        <result column="updated_at"         property="updatedAt"/>
+    </resultMap>
+
+    <select id="findByPondId" resultMap="BaseResultMap">
+        SELECT pond_id, stock_date, initial_fish_count, initial_weight_kg,
+               harvest_date, final_fish_count, final_weight_kg,
+               created_at, updated_at
+        FROM pond_setup
+        WHERE pond_id = #{pondId}
+        LIMIT 1
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="pondId">
+        INSERT INTO pond_setup
+            (pond_id, stock_date, initial_fish_count, initial_weight_kg,
+             harvest_date, final_fish_count, final_weight_kg, created_at, updated_at)
+        VALUES
+            (#{pondId}, #{stockDate}, #{initialFishCount}, #{initialWeightKg},
+             #{harvestDate}, #{finalFishCount}, #{finalWeightKg}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <update id="update">
+        UPDATE pond_setup SET
+            stock_date         = #{stockDate},
+            initial_fish_count = #{initialFishCount},
+            initial_weight_kg  = #{initialWeightKg},
+            harvest_date       = #{harvestDate},
+            final_fish_count   = #{finalFishCount},
+            final_weight_kg    = #{finalWeightKg},
+            updated_at         = #{updatedAt}
+        WHERE pond_id = #{pondId}
+    </update>
+
+</mapper>
