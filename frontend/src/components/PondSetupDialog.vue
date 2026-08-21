@@ -54,7 +54,7 @@
           value-format="YYYY-MM-DD"
           format="YYYY-MM-DD"
           placeholder="选填"
-          :disabled-date="d => d < (form.stockDate ? new Date(form.stockDate) : new Date())"
+          :disabled-date="(d: Date) => d < (form.stockDate ? new Date(form.stockDate) : new Date())"
           style="width: 100%"
         />
       </el-form-item>
@@ -91,7 +91,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { Pond, PondSetup, PondSetupRequest } from '../api/biomass'
 import { getPondSetup, savePondSetup } from '../api/biomass'
@@ -105,11 +105,11 @@ const saving = ref(false)
 const form = ref<PondSetupRequest>({
   pondId: 0,
   stockDate: today(),
-  initialFishCount: null,
-  initialWeightKg: null,
-  harvestDate: null,
-  finalFishCount: null,
-  finalWeightKg: null,
+  initialFishCount: undefined,
+  initialWeightKg: undefined,
+  harvestDate: undefined,
+  finalFishCount: undefined,
+  finalWeightKg: undefined,
 })
 
 function today() {
@@ -127,11 +127,11 @@ function disableFuture(d: Date) {
 async function open() {
   form.value.pondId = props.selectedPondId ?? props.ponds[0]?.id ?? 0
   form.value.stockDate = today()
-  form.value.initialFishCount = null
-  form.value.initialWeightKg = null
-  form.value.harvestDate = null
-  form.value.finalFishCount = null
-  form.value.finalWeightKg = null
+  form.value.initialFishCount = undefined
+  form.value.initialWeightKg = undefined
+  form.value.harvestDate = undefined
+  form.value.finalFishCount = undefined
+  form.value.finalWeightKg = undefined
   visible.value = true
   await loadSetup()
 }
@@ -143,11 +143,11 @@ async function loadSetup() {
     const res = await getPondSetup(form.value.pondId)
     const s: PondSetup = res.data.data ?? {}
     form.value.stockDate = s.stockDate ?? today()
-    form.value.initialFishCount = s.initialFishCount ?? null
-    form.value.initialWeightKg = s.initialWeightKg ?? null
-    form.value.harvestDate = s.harvestDate ?? null
-    form.value.finalFishCount = s.finalFishCount ?? null
-    form.value.finalWeightKg = s.finalWeightKg ?? null
+    form.value.initialFishCount = s.initialFishCount ?? undefined
+    form.value.initialWeightKg = s.initialWeightKg ?? undefined
+    form.value.harvestDate = s.harvestDate ?? undefined
+    form.value.finalFishCount = s.finalFishCount ?? undefined
+    form.value.finalWeightKg = s.finalWeightKg ?? undefined
   } catch {
     ElMessage.info('该池塘暂无放养参数')
   } finally {
@@ -198,11 +198,11 @@ async function save() {
 function resetForm() {
   form.value.pondId = 0
   form.value.stockDate = ''
-  form.value.initialFishCount = null
-  form.value.initialWeightKg = null
-  form.value.harvestDate = null
-  form.value.finalFishCount = null
-  form.value.finalWeightKg = null
+  form.value.initialFishCount = undefined
+  form.value.initialWeightKg = undefined
+  form.value.harvestDate = undefined
+  form.value.finalFishCount = undefined
+  form.value.finalWeightKg = undefined
 }
 
 defineExpose({ open })

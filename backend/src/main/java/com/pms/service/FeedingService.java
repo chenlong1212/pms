@@ -140,10 +140,10 @@ public class FeedingService {
         if (request == null || request.getDailyRate() == null) {
             throw new IllegalArgumentException("投喂比例不能为空");
         }
-        BigDecimal minRate = new BigDecimal("0.0200");
-        BigDecimal maxRate = new BigDecimal("0.0300");
+        BigDecimal minRate = new BigDecimal("0.0100");
+        BigDecimal maxRate = new BigDecimal("0.0500");
         if (request.getDailyRate().compareTo(minRate) < 0 || request.getDailyRate().compareTo(maxRate) > 0) {
-            throw new IllegalArgumentException("投喂比例必须在 2%–3% 之间");
+            throw new IllegalArgumentException("投喂比例必须在 1%–5% 之间");
         }
         if (request.getMealsPerDay() == null || request.getMealsPerDay() < 1 || request.getMealsPerDay() > 3) {
             throw new IllegalArgumentException("每日投喂次数必须为 1–3 次");

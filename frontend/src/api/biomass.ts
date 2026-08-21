@@ -48,8 +48,8 @@ export interface PondSetup {
 export interface PondSetupRequest {
   pondId: number
   stockDate: string
-  initialFishCount: number
-  initialWeightKg: number
+  initialFishCount?: number | null
+  initialWeightKg?: number | null
   harvestDate?: string | null
   finalFishCount?: number | null
   finalWeightKg?: number | null

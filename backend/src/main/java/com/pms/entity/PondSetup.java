@@ -16,6 +16,7 @@ public class PondSetup {
     private LocalDate harvestDate;
     private Integer finalFishCount;
     private BigDecimal finalWeightKg;
+    private BigDecimal feedingRatio;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

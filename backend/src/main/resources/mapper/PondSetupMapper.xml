@@ -11,6 +11,7 @@
         <result column="harvest_date"       property="harvestDate"/>
         <result column="final_fish_count"   property="finalFishCount"/>
         <result column="final_weight_kg"    property="finalWeightKg"/>
+        <result column="feeding_ratio"      property="feedingRatio"/>
         <result column="created_at"         property="createdAt"/>
         <result column="updated_at"         property="updatedAt"/>
     </resultMap>
@@ -18,7 +19,7 @@
     <select id="findByPondId" resultMap="BaseResultMap">
         SELECT pond_id, stock_date, initial_fish_count, initial_weight_kg,
                harvest_date, final_fish_count, final_weight_kg,
-               created_at, updated_at
+               feeding_ratio, created_at, updated_at
         FROM pond_setup
         WHERE pond_id = #{pondId}
         LIMIT 1
@@ -27,10 +28,10 @@
     <insert id="insert" useGeneratedKeys="true" keyProperty="pondId">
         INSERT INTO pond_setup
             (pond_id, stock_date, initial_fish_count, initial_weight_kg,
-             harvest_date, final_fish_count, final_weight_kg, created_at, updated_at)
+             harvest_date, final_fish_count, final_weight_kg, feeding_ratio, created_at, updated_at)
         VALUES
             (#{pondId}, #{stockDate}, #{initialFishCount}, #{initialWeightKg},
-             #{harvestDate}, #{finalFishCount}, #{finalWeightKg}, #{createdAt}, #{updatedAt})
+             #{harvestDate}, #{finalFishCount}, #{finalWeightKg}, #{feedingRatio}, #{createdAt}, #{updatedAt})
     </insert>
 
     <update id="update">
@@ -41,6 +42,7 @@
             harvest_date       = #{harvestDate},
             final_fish_count   = #{finalFishCount},
             final_weight_kg    = #{finalWeightKg},
+            feeding_ratio      = #{feedingRatio},
             updated_at         = #{updatedAt}
         WHERE pond_id = #{pondId}
     </update>

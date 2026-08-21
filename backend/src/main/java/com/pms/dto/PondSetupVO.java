@@ -17,4 +17,5 @@ public class PondSetupVO {
     private LocalDate harvestDate;
     private Integer finalFishCount;
     private BigDecimal finalWeightKg;
+    private BigDecimal feedingRatio;
 }

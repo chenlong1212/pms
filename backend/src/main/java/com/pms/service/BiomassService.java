@@ -27,6 +27,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
 
 @Service
 @RequiredArgsConstructor
@@ -34,6 +35,13 @@ public class BiomassService {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final ZoneId ZONE = ZoneId.of("Asia/Shanghai");
+
+    // 仿照 gp 项目的离散日增长模型参数
+    private static final double COUNT_DECREASE_FACTOR = 0.9997;   // 每日鱼群数量递减率
+    private static final double LENGTH_GROWTH_MIN   = 0.05;       // 体长日增长最小值(mm)
+    private static final double LENGTH_GROWTH_MAX   = 0.08;       // 体长日增长最大值(mm)
+    private static final double WIDTH_GROWTH_MIN    = 0.03;       // 体宽日增长最小值(mm)
+    private static final double WIDTH_GROWTH_MAX    = 0.05;       // 体宽日增长最大值(mm)
 
     private final PondMapper pondMapper;
     private final BiomassRecordMapper biomassRecordMapper;
@@ -67,6 +75,7 @@ public class BiomassService {
         vo.setHarvestDate(s.getHarvestDate());
         vo.setFinalFishCount(s.getFinalFishCount());
         vo.setFinalWeightKg(s.getFinalWeightKg());
+        vo.setFeedingRatio(s.getFeedingRatio());
         return vo;
     }
 
@@ -104,6 +113,10 @@ public class BiomassService {
             throw new IllegalArgumentException("收获日期必须晚于放养日期");
         }
 
+        BigDecimal feedingRatio = request.getFeedingRatio() != null
+                ? request.getFeedingRatio().setScale(4, RoundingMode.HALF_UP)
+                : BigDecimal.valueOf(0.0160);
+
         LocalDateTime now = LocalDateTime.now(ZONE);
         PondSetup setup = new PondSetup();
         setup.setPondId(pond.getId());
@@ -115,6 +128,7 @@ public class BiomassService {
         setup.setFinalFishCount(request.getFinalFishCount());
         setup.setFinalWeightKg(request.getFinalWeightKg() != null
                 ? request.getFinalWeightKg().setScale(4, RoundingMode.HALF_UP) : null);
+        setup.setFeedingRatio(feedingRatio);
         setup.setCreatedAt(now);
         setup.setUpdatedAt(now);
 
@@ -146,7 +160,8 @@ public class BiomassService {
 
         List<String> dates = new ArrayList<>();
         List<Integer> countList = new ArrayList<>();
-        List<BigDecimal> weightList = new ArrayList<>();
+        // 用克(g)存储日均重，避免小数精度丢失
+        List<Integer> weightGList = new ArrayList<>();
         List<BigDecimal> biomassList = new ArrayList<>();
 
         for (LocalDate d = startDate; !d.isAfter(today); d = d.plusDays(1)) {
@@ -157,35 +172,42 @@ public class BiomassService {
             if (correction != null) {
                 // 有校正记录，直接使用
                 countList.add(correction.getFishCount());
-                weightList.add(correction.getAvgWeightKg());
+                weightGList.add(correction.getAvgWeightKg().multiply(BigDecimal.valueOf(1000))
+                        .intValue());
                 biomassList.add(correction.getBiomassKg());
                 continue;
             }
 
-            // 无校正记录，用指数模型推算
+            // 无校正记录，用离散日增长模型推算
             if (setupOpt.isPresent()) {
                 PondSetup setup = setupOpt.get();
                 long daysElapsed = java.time.temporal.ChronoUnit.DAYS.between(setup.getStockDate(), d);
-                int totalDays = calcTotalDays(setup);
-                if (daysElapsed < 0 || (setup.getHarvestDate() != null && d.isAfter(setup.getHarvestDate()))) {
-                    // 推算日期在放养日之前，或已过收获日期，补零
+                if (daysElapsed < 0) {
                     countList.add(0);
-                    weightList.add(BigDecimal.ZERO);
+                    weightGList.add(0);
                     biomassList.add(BigDecimal.ZERO);
                 } else {
-                    int count = estimateFishCount(setup, daysElapsed);
-                    BigDecimal weight = estimateWeight(setup, daysElapsed);
-                    countList.add(count);
-                    weightList.add(weight);
-                    biomassList.add(weight.multiply(BigDecimal.valueOf(count))
-                            .setScale(2, RoundingMode.HALF_UP));
+                    // 模拟到该天为止的状态
+                    SimState state = simulateToDay(setup, daysElapsed);
+                    countList.add(state.count);
+                    weightGList.add(state.weightG);
+                    // 生物量(kg) = 数量 × 单尾重量(g) / 1000
+                    biomassList.add(BigDecimal.valueOf(state.count)
+                            .multiply(BigDecimal.valueOf(state.weightG))
+                            .divide(BigDecimal.valueOf(1000), 3, RoundingMode.HALF_UP));
                 }
             } else {
                 // 无放养参数也无校正，填零
                 countList.add(0);
-                weightList.add(BigDecimal.ZERO);
+                weightGList.add(0);
                 biomassList.add(BigDecimal.ZERO);
             }
+        }
+
+        // weightGList 转回 kg 返回
+        List<BigDecimal> weightKgList = new ArrayList<>();
+        for (int wG : weightGList) {
+            weightKgList.add(BigDecimal.valueOf(wG).divide(BigDecimal.valueOf(1000), 4, RoundingMode.HALF_UP));
         }
 
         BiomassTrendVO vo = new BiomassTrendVO();
@@ -196,66 +218,59 @@ public class BiomassService {
         vo.setDates(dates);
         vo.setBiomass(biomassList);
         vo.setCount(countList);
-        vo.setAvgWeight(weightList);
+        vo.setAvgWeight(weightKgList);
         return vo;
     }
 
-    /**
-     * 指数衰减/增长模型：
-     * fishCount(t) = N0 * (Nt/N0)^(t/T)
-     */
-    private int estimateFishCount(PondSetup setup, long daysElapsed) {
-        int n0 = setup.getInitialFishCount();
-        Integer nt = setup.getFinalFishCount();
+    // ──────────────────────────────────────────────
+    // 离散日增长模型（对齐 gp 项目 simulation_service.py）
+    // ──────────────────────────────────────────────
 
-        if (nt == null) {
-            // 无最终数量，假设线性减少：每天减少固定量
-            int totalDays = calcTotalDays(setup);
-            if (totalDays <= 0) return n0;
-            int dailyChange = (n0 - 0) / totalDays; // 假设最终归零
-            int count = n0 - (int) (dailyChange * daysElapsed);
-            return Math.max(0, count);
+    /** 模拟状态：鱼数 + 平均体重(克) */
+    private static class SimState {
+        int count;
+        int weightG; // 平均体重，单位克
+        SimState(int count, int weightG) {
+            this.count = count;
+            this.weightG = weightG;
         }
-
-        if (nt <= 0 || nt == n0) return n0;
-
-        double ratio = (double) nt / n0;
-        int totalDays = calcTotalDays(setup);
-        double exponent = (double) daysElapsed / totalDays;
-        return Math.max(0, (int) Math.round(n0 * Math.pow(ratio, exponent)));
     }
 
     /**
-     * 指数增长模型：
-     * weight(t) = w0 * (wt/w0)^(t/T)
+     * 从放养日模拟到指定的第 daysElapsed 天（不含），返回当天结束时的状态。
+     * 每次调用使用不同的 Random 实例，保证趋势线各天之间连续。
      */
-    private BigDecimal estimateWeight(PondSetup setup, long daysElapsed) {
-        BigDecimal w0 = setup.getInitialWeightKg();
-        BigDecimal wt = setup.getFinalWeightKg();
+    private SimState simulateToDay(PondSetup setup, long daysElapsed) {
+        Random rand = new Random(setup.getStockDate().toEpochDay());
+        int count = setup.getInitialFishCount();
+        // 初始平均体重转为克
+        int weightG = setup.getInitialWeightKg()
+                .multiply(BigDecimal.valueOf(1000))
+                .intValue();
 
-        if (wt == null) {
-            // 无最终重量，假设线性增长至初始值的 10 倍
-            int totalDays = calcTotalDays(setup);
-            if (totalDays <= 0) return w0;
-            BigDecimal target = w0.multiply(BigDecimal.TEN);
-            BigDecimal dailyGrowth = target.subtract(w0).divide(
-                    BigDecimal.valueOf(totalDays), 6, RoundingMode.HALF_UP);
-            return w0.add(dailyGrowth.multiply(BigDecimal.valueOf(daysElapsed)))
-                    .setScale(4, RoundingMode.HALF_UP);
+        for (long day = 0; day < daysElapsed; day++) {
+            // 1) 鱼群数量衰减
+            count = (int) Math.max(0, Math.round(count * COUNT_DECREASE_FACTOR));
+
+            // 2) 体重增长（基于当前体重分档）
+            double growthRate = getMassGrowthRate(weightG);
+            weightG = (int) Math.round(weightG * (1.0 + growthRate));
         }
-
-        if (wt.compareTo(w0) <= 0) return w0;
-
-        double ratio = wt.doubleValue() / w0.doubleValue();
-        int totalDays = calcTotalDays(setup);
-        double exponent = (double) daysElapsed / totalDays;
-        double result = w0.doubleValue() * Math.pow(ratio, exponent);
-        return BigDecimal.valueOf(result).setScale(4, RoundingMode.HALF_UP);
+        return new SimState(count, weightG);
     }
 
-    private int calcTotalDays(PondSetup setup) {
-        if (setup.getHarvestDate() == null) return 365;
-        return (int) java.time.temporal.ChronoUnit.DAYS.between(setup.getStockDate(), setup.getHarvestDate());
+    /**
+     * 根据当前单尾体重(克)返回日增长率：
+     *   ≤ 400g → 1.3333%
+     *   ≤ 500g → 0.8333%
+     *   ≤ 600g → 0.75%
+     *   >  600g → 0.05%
+     */
+    private static double getMassGrowthRate(int weightG) {
+        if (weightG <= 400)  return 0.013333;
+        if (weightG <= 500)  return 0.008333;
+        if (weightG <= 600)  return 0.0075;
+        return 0.0005;
     }
 
     public BiomassCorrectionVO getRecord(int pondId, String recordDate) {
