@@ -18,6 +18,11 @@ public interface BiomassRecordMapper {
     BiomassRecord findByPondAndDate(@Param("pondId") int pondId,
                                     @Param("recordDate") String recordDate);
 
+    BiomassRecord findLatestBefore(@Param("pondId") int pondId,
+                                   @Param("recordDate") String recordDate);
+
+    BiomassRecord findLatestByPondId(@Param("pondId") int pondId);
+
     int upsertDailyMetric(@Param("pondId") int pondId,
                           @Param("recordDate") String recordDate,
                           @Param("fishCount") int fishCount,

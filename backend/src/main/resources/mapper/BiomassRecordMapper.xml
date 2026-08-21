@@ -30,6 +30,23 @@
         LIMIT 1
     </select>
 
+    <select id="findLatestBefore" resultMap="BaseResultMap">
+        SELECT id, pond_id, record_date, biomass_kg, fish_count, avg_weight_kg, created_at
+        FROM biomass_record
+        WHERE pond_id = #{pondId}
+          AND record_date &lt;= #{recordDate}
+        ORDER BY record_date DESC
+        LIMIT 1
+    </select>
+
+    <select id="findLatestByPondId" resultMap="BaseResultMap">
+        SELECT id, pond_id, record_date, biomass_kg, fish_count, avg_weight_kg, created_at
+        FROM biomass_record
+        WHERE pond_id = #{pondId}
+        ORDER BY record_date DESC
+        LIMIT 1
+    </select>
+
     <insert id="upsertDailyMetric">
         INSERT INTO pond_daily_metric
             (pond_id, record_date, fish_count, avg_weight_kg, created_at, updated_at)
