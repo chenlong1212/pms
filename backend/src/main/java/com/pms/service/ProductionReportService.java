@@ -35,6 +35,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
@@ -54,6 +55,7 @@ public class ProductionReportService {
     private final LlmClient llmClient;
     private final LlmProperties llmProperties;
     private final ObjectMapper objectMapper;
+    private final BiomassService biomassService;
 
     private String prompt;
 
@@ -88,8 +90,12 @@ public class ProductionReportService {
         vo.getWaterQuality().setPh(metric(water, DeviceDataRecord::getPh));
         vo.getWaterQuality().setTemperature(metric(water, DeviceDataRecord::getThw));
 
-        List<BiomassRecord> biomassRecords = biomassRecordMapper.findTrendData(
-                pond.getId(), startDate.format(DATE), endDate.format(DATE));
+        // 报告周期内逐日取有效生物量：有手动校正记录用记录，否则用放养模型模拟值兜底
+        List<BiomassRecord> biomassRecords = new ArrayList<>();
+        for (LocalDate d = startDate; !d.isAfter(endDate); d = d.plusDays(1)) {
+            BiomassRecord r = biomassService.getEffectiveBiomass(pond.getId(), d);
+            if (r != null) biomassRecords.add(r);
+        }
         BiomassRecord biomass = biomassRecords.isEmpty() ? null : biomassRecords.get(biomassRecords.size() - 1);
         if (biomass != null) {
             ReportPreviewVO.Biomass value = new ReportPreviewVO.Biomass();

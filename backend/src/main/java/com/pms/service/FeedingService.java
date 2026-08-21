@@ -10,7 +10,6 @@ import com.pms.entity.BiomassRecord;
 import com.pms.entity.FeedingRecord;
 import com.pms.entity.FeedingStrategySetting;
 import com.pms.entity.Pond;
-import com.pms.mapper.BiomassRecordMapper;
 import com.pms.mapper.FeedingRecordMapper;
 import com.pms.mapper.FeedingStrategyMapper;
 import com.pms.mapper.PondMapper;
@@ -38,8 +37,8 @@ public class FeedingService {
 
     private final PondMapper pondMapper;
     private final FeedingRecordMapper feedingRecordMapper;
-    private final BiomassRecordMapper biomassRecordMapper;
     private final FeedingStrategyMapper feedingStrategyMapper;
+    private final BiomassService biomassService;
 
     public List<PondVO> getPonds() {
         return pondMapper.findAll().stream()
@@ -99,8 +98,8 @@ public class FeedingService {
         Pond pond = validatePond(pondId);
         FeedingStrategySetting setting = getOrCreateStrategySetting(pondId);
         LocalDate today = LocalDate.now(ZONE);
-        String todayStr = today.format(DATE_FORMATTER);
-        BiomassRecord biomass = biomassRecordMapper.findByPondAndDate(pondId, todayStr);
+        // 今日有效生物量：优先手动校正记录，无记录时用放养模型模拟值兜底
+        BiomassRecord biomass = biomassService.getEffectiveBiomass(pondId, today);
 
         FeedingStrategyVO vo = new FeedingStrategyVO();
         vo.setPondId(pond.getId());

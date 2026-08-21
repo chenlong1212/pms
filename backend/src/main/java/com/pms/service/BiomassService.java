@@ -222,6 +222,44 @@ public class BiomassService {
         return vo;
     }
 
+    /**
+     * 取某池塘指定日期的"有效生物量"：优先取该日人工校正记录（pond_daily_metric，
+     * 经 biomass_record 视图可见）；无记录时回退到放养参数 + 离散增长模型的模拟值。
+     * 用于生产报告预览与投喂策略，保证"当前生物量"始终有值可展示。
+     *
+     * @return 当日生物量记录；池塘不存在、无放养参数或日期早于放养日时返回 null
+     */
+    public BiomassRecord getEffectiveBiomass(int pondId, LocalDate date) {
+        requirePond(pondId);
+        String dateStr = date.format(DATE_FORMATTER);
+        BiomassRecord manual = biomassRecordMapper.findByPondAndDate(pondId, dateStr);
+        if (manual != null) {
+            return manual;
+        }
+        Optional<PondSetup> setupOpt = pondSetupMapper.findByPondId(pondId);
+        if (setupOpt.isEmpty()) {
+            return null;
+        }
+        PondSetup setup = setupOpt.get();
+        long daysElapsed = java.time.temporal.ChronoUnit.DAYS.between(setup.getStockDate(), date);
+        if (daysElapsed < 0) {
+            return null;
+        }
+        SimState state = simulateToDay(setup, daysElapsed);
+        BigDecimal avgWeightKg = BigDecimal.valueOf(state.weightG)
+                .divide(BigDecimal.valueOf(1000), 4, RoundingMode.HALF_UP);
+        BigDecimal biomassKg = BigDecimal.valueOf(state.count)
+                .multiply(BigDecimal.valueOf(state.weightG))
+                .divide(BigDecimal.valueOf(1000), 3, RoundingMode.HALF_UP);
+        BiomassRecord simulated = new BiomassRecord();
+        simulated.setPondId(pondId);
+        simulated.setRecordDate(date);
+        simulated.setFishCount(state.count);
+        simulated.setAvgWeightKg(avgWeightKg);
+        simulated.setBiomassKg(biomassKg);
+        return simulated;
+    }
+
     // ──────────────────────────────────────────────
     // 离散日增长模型（对齐 gp 项目 simulation_service.py）
     // ──────────────────────────────────────────────
